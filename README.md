@@ -1,43 +1,85 @@
 # PrimePortrait Maker
 
-画像を80x48の数字グリッドに変換し、最後の16桁だけを変えて3,840桁の巨大素数を探すNext.jsアプリです。
+Turn an uploaded image into a digit portrait, then search for a giant prime by changing only the suffix.  
+PrimePortrait Maker runs entirely in the browser: image processing, Miller-Rabin checks, and PNG export all happen client-side.
 
-## 特徴
+## Features
 
-- JPG/PNGアップロード
-- 1:1切り抜き位置調整UI
-- Canvas APIによる正方形クロップ、グレースケール化、0〜9量子化、Floyd-Steinberg系ディザリング
-- 小素数ふるい + ブラウザ `BigInt` + Web WorkerによるMiller-Rabin確率素数判定
-- 通常素数 / Gaussian Prime `n mod 4 = 3` モード
-- 数字グリッドPNGダウンロード
-- 完成した巨大整数の改行なし/改行付きコピー
+- Upload JPG/PNG images
+- Square crop workflow with horizontal/vertical focus controls
+- Convert the crop into an `80x48` digit grid, for a `3,840` digit integer
+- Grayscale conversion, luminance normalization, 0-9 quantization, and Floyd-Steinberg style dithering
+- Browser `BigInt` prime search in a Web Worker
+- Only the final `16` digits are varied, so the portrait stays visually stable
+- Normal prime and Gaussian Prime mode (`n mod 4 = 3`)
+- Search progress, stop/retry controls, and Miller-Rabin test count
+- Copy the final prime as one line or wrapped to the portrait width
+- Save the prime digit portrait as a PNG
+- Japanese, English, Chinese, and automatic language selection
 
-## ローカル起動
+## Tech Stack
 
-Finderから起動する場合は `OpenPrimePortrait.command` をダブルクリックします。
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Canvas API
+- Web Worker
+- BigInt
 
-ターミナルから起動する場合:
+No Python backend or Vercel Functions are required for the MVP.
+
+## Local Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-ブラウザで `http://localhost:3000` を開きます。
+Open:
 
-## Vercel公開
+```text
+http://localhost:3000
+```
 
-1. このディレクトリをGitHubリポジトリとしてpushします。
-2. Vercelで `Add New Project` からGitHubリポジトリをImportします。
-3. Framework Presetは `Next.js` のままでDeployします。
+On macOS, you can also double-click:
 
-このMVPはPython APIやVercel Functionsを使いません。画像処理と素数探索はブラウザ側で完結するため、Vercel HobbyのFunction実行時間制限を避けられます。
+```text
+OpenPrimePortrait.command
+```
 
-## 探索パラメータ
+## Build
 
-- Grid: `80x48`
-- Total digits: `3,840`
-- Variable suffix: `16` digits
-- Max attempts: `100,000`
+```bash
+npm run typecheck
+npm run build
+```
 
-探索上限に到達した場合は、再探索で別のsuffix候補範囲を試してください。
+## Deploy to Vercel
+
+1. Push this repository to GitHub.
+2. Import the repository from Vercel.
+3. Keep the framework preset as `Next.js`.
+4. Deploy.
+
+Because the prime search runs in the browser, the app avoids serverless function time limits on Vercel Hobby.
+
+## Search Parameters
+
+Current MVP defaults:
+
+```text
+Grid: 80x48
+Total digits: 3,840
+Variable suffix: 16 digits
+Max attempts: 100,000
+```
+
+Prime search time depends heavily on the browser, CPU, selected image, and luck. If the search reaches the attempt limit, use retry to try another suffix range.
+
+## Notes
+
+- This is an experimental math-art tool, not a cryptographic prime generator.
+- Miller-Rabin is used as a probabilistic primality test.
+- Uploaded images stay local in the browser and are not sent to a server by this app.
+
