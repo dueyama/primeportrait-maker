@@ -14,10 +14,12 @@
 body {
   min-height: 100vh;
   margin: 0;
-  background:
-    radial-gradient(circle at 16% 10%, rgba(45, 212, 191, 0.16), transparent 26rem),
-    radial-gradient(circle at 82% 0%, rgba(248, 113, 113, 0.12), transparent 24rem),
-    linear-gradient(135deg, #10131a 0%, #171717 52%, #101820 100%);
+  background-color: #090d11;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(135deg, #0b1015 0%, #11161d 52%, #091216 100%);
+  background-size: 32px 32px, 32px 32px, auto;
   color: #f4f1e8;
 }
 
@@ -35,4 +37,18 @@ textarea {
 .digit-grid {
   font-variant-ligatures: none;
   letter-spacing: 0;
+}
+
+.digit-grid::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.digit-grid::-webkit-scrollbar-thumb {
+  background: rgba(94, 234, 212, 0.22);
+  border-radius: 999px;
+}
+
+.digit-grid::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.18);
 }

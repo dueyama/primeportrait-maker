@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   GRID_HEIGHT,
   GRID_WIDTH,
@@ -36,6 +36,22 @@ const translations = {
     japanese: "日本語",
     english: "英語",
     chinese: "中国語",
+    stepImage: "画像",
+    stepDigits: "数字",
+    stepPrime: "素数探索",
+    outputTitle: "デジタルポートレート",
+    outputMeta: "数字の濃淡: 0-9",
+    fileMeta: "入力画像",
+    noCrop: "画像を選択すると切り抜きが表示されます。",
+    cropRatio: "正方形切り抜き",
+    fixedResolution: "解像度（固定）",
+    searchControls: "探索設定",
+    statusStrip: "探索ステータス",
+    attemptCount: "試行回数",
+    currentSuffix: "現在の接尾辞",
+    noPrimeYet: "素数が見つかるとコピーとPNG保存が使えます。",
+    primeUnwrapped: "素数（改行なし）",
+    primeWrapped: "素数（改行付き）",
     upload: "画像アップロード",
     crop: "切り抜き",
     cropPosition: "切り抜き位置",
@@ -93,6 +109,22 @@ const translations = {
     japanese: "Japanese",
     english: "English",
     chinese: "Chinese",
+    stepImage: "Image",
+    stepDigits: "Digits",
+    stepPrime: "Prime search",
+    outputTitle: "Digital portrait",
+    outputMeta: "Digit tone: 0-9",
+    fileMeta: "Input image",
+    noCrop: "Choose an image to show the crop.",
+    cropRatio: "Square crop",
+    fixedResolution: "Fixed resolution",
+    searchControls: "Search settings",
+    statusStrip: "Search status",
+    attemptCount: "Attempts",
+    currentSuffix: "Current suffix",
+    noPrimeYet: "Copy and PNG actions appear after a prime is found.",
+    primeUnwrapped: "Prime, unwrapped",
+    primeWrapped: "Prime, wrapped",
     upload: "Upload image",
     crop: "Crop",
     cropPosition: "Crop position",
@@ -150,6 +182,22 @@ const translations = {
     japanese: "日语",
     english: "英语",
     chinese: "中文",
+    stepImage: "图像",
+    stepDigits: "数字",
+    stepPrime: "素数搜索",
+    outputTitle: "数字肖像",
+    outputMeta: "数字明暗: 0-9",
+    fileMeta: "输入图像",
+    noCrop: "选择图片后会显示裁剪。",
+    cropRatio: "正方形裁剪",
+    fixedResolution: "固定分辨率",
+    searchControls: "搜索设置",
+    statusStrip: "搜索状态",
+    attemptCount: "试行次数",
+    currentSuffix: "当前后缀",
+    noPrimeYet: "找到素数后可复制并保存PNG。",
+    primeUnwrapped: "素数（无换行）",
+    primeWrapped: "素数（有换行）",
     upload: "上传图片",
     crop: "裁剪",
     cropPosition: "裁剪位置",
@@ -208,22 +256,28 @@ export default function Home() {
   const [fileName, setFileName] = useState("");
   const [cropFocus, setCropFocus] = useState<CropFocus>({ x: 0.5, y: 0.5 });
   const [localeOption, setLocaleOption] = useState<LocaleOption>("auto");
+  const [autoLocale, setAutoLocale] = useState<Locale>("ja");
   const [gaussian, setGaussian] = useState(false);
   const [digitTone, setDigitTone] = useState(true);
   const [status, setStatus] = useState<SearchStatus>("idle");
   const [attempts, setAttempts] = useState(0);
   const [probablePrimeTests, setProbablePrimeTests] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [currentSuffix, setCurrentSuffix] = useState("");
   const [prime, setPrime] = useState("");
   const [message, setMessage] = useState("");
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 9_000_000));
 
-  const locale = useMemo(() => resolveLocale(localeOption), [localeOption]);
+  const locale = useMemo(() => resolveLocale(localeOption, autoLocale), [autoLocale, localeOption]);
   const t = translations[locale];
   const gridText = useMemo(() => art?.grid.join("\n") ?? "", [art]);
   const wrappedPrime = useMemo(() => (prime ? wrapDigits(prime, GRID_WIDTH) : ""), [prime]);
   const canSearch = Boolean(art) && status !== "running";
   const displayMessage = message || t.noImage;
+
+  useEffect(() => {
+    setAutoLocale(detectBrowserLocale());
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -242,6 +296,7 @@ export default function Home() {
     setStatus("idle");
     setPrime("");
     setProgress(0);
+    setCurrentSuffix("");
     setAttempts(0);
     setProbablePrimeTests(0);
     setFileName(file.name);
@@ -266,6 +321,7 @@ export default function Home() {
     setStatus("idle");
     setPrime("");
     setProgress(0);
+    setCurrentSuffix("");
     setAttempts(0);
     setProbablePrimeTests(0);
     setMessage(t.generating);
@@ -293,6 +349,7 @@ export default function Home() {
     setStatus("running");
     setPrime("");
     setProgress(0);
+    setCurrentSuffix("");
     setAttempts(0);
     setProbablePrimeTests(0);
     setMessage(gaussian ? t.searchingGaussian : t.searchingPrime);
@@ -303,6 +360,7 @@ export default function Home() {
         setAttempts(data.attempts);
         setProbablePrimeTests(data.probablePrimeTests);
         setProgress(data.progress);
+        setCurrentSuffix(data.currentSuffix);
         setMessage(
           data.attempts === 0
             ? t.preparing
@@ -314,6 +372,7 @@ export default function Home() {
         setAttempts(data.attempts);
         setProbablePrimeTests(data.probablePrimeTests);
         setProgress(1);
+        setCurrentSuffix(data.suffix);
         setPrime(data.prime);
         setMessage(
           data.gaussian
@@ -399,216 +458,215 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-5 text-stone-100 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-5 flex flex-col gap-4 rounded-lg border border-white/10 bg-zinc-950/60 px-4 py-4 shadow-2xl shadow-black/20 backdrop-blur sm:flex-row sm:items-start sm:justify-between">
-          <div className="max-w-2xl">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-teal-300">PrimePortrait Maker</p>
-            <h1 className="mt-2 text-2xl font-semibold leading-tight text-stone-50 sm:text-3xl">{t.title}</h1>
-            <p className="mt-2 text-sm leading-5 text-stone-300">{t.subtitle}</p>
+    <main className="min-h-screen px-3 py-3 text-stone-100 sm:px-5 lg:px-6">
+      <div className="mx-auto flex max-w-[1540px] flex-col gap-3">
+        <header className="flex flex-col gap-3 rounded-lg border border-white/10 bg-zinc-950/70 px-3 py-3 shadow-2xl shadow-black/25 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded border border-teal-300/50 bg-teal-300/10 font-mono text-lg text-teal-200">P</div>
+            <div className="min-w-0">
+              <p className="font-mono text-base font-semibold tracking-wide text-stone-50 sm:text-lg">{t.appTitle}</p>
+              <h1 className="truncate text-sm leading-5 text-stone-400">{t.title}</h1>
+            </div>
           </div>
           <LanguageSwitch localeOption={localeOption} setLocaleOption={setLocaleOption} t={t} />
         </header>
 
-        <div className="grid justify-center gap-5 lg:grid-cols-[300px_minmax(0,760px)]">
-        <section className="rounded-lg border border-white/10 bg-zinc-950/70 p-4 shadow-2xl shadow-black/30 backdrop-blur">
+        <div className="grid gap-3 lg:grid-cols-[76px_470px_minmax(0,1fr)] 2xl:grid-cols-[84px_500px_minmax(0,1fr)]">
+          <StepRail
+            steps={[
+              { index: 1, label: t.stepImage, complete: Boolean(sourceFile), active: !sourceFile },
+              { index: 2, label: t.stepDigits, complete: Boolean(art), active: Boolean(sourceFile) && !art },
+              { index: 3, label: t.stepPrime, complete: Boolean(prime), active: Boolean(art) },
+            ]}
+          />
 
-          <label className="block">
-            <span className="text-sm font-medium text-stone-200">{t.upload}</span>
-            <input
-              className="mt-2 block w-full cursor-pointer rounded-md border border-white/10 bg-stone-900 text-sm text-stone-200 file:mr-3 file:border-0 file:bg-teal-300 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-zinc-950"
-              type="file"
-              accept="image/png,image/jpeg"
-              onChange={(event) => void handleFile(event.target.files?.[0] ?? null)}
-            />
-          </label>
-
-          {fileName ? <p className="mt-2 truncate text-xs text-stone-400">{fileName}</p> : null}
-
-          {sourceUrl ? (
-            <div className="mt-4 rounded-md border border-white/10 bg-black/20 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-medium text-stone-200">{t.cropPosition}</span>
-                <span className="font-mono text-xs text-stone-500">1:1</span>
+          <section className="overflow-hidden rounded-lg border border-white/10 bg-zinc-950/75 shadow-2xl shadow-black/30 backdrop-blur">
+            <WorkflowBlock index={1} title={t.stepImage} active={!sourceFile}>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
+                <label className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-md border border-teal-300/50 bg-teal-300/10 px-3 text-sm font-semibold text-teal-100 transition hover:bg-teal-300/20">
+                  <span>{t.upload}</span>
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    onChange={(event) => void handleFile(event.target.files?.[0] ?? null)}
+                  />
+                </label>
+                <div className="min-w-0 rounded-md border border-white/10 bg-black/20 px-3 py-2">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-stone-500">{t.fileMeta}</p>
+                  <p className="truncate text-xs text-stone-300">{fileName || "-"}</p>
+                </div>
               </div>
-              <div className="mt-3 mx-auto aspect-square max-h-44 overflow-hidden rounded-md border border-teal-300/30 bg-black/40">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  className="h-full w-full object-cover"
-                  src={sourceUrl}
-                  alt="Crop preview"
-                  style={{ objectPosition: `${cropFocus.x * 100}% ${cropFocus.y * 100}%` }}
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
+                <div className="aspect-square overflow-hidden rounded-md border border-teal-300/25 bg-black/30">
+                  {sourceUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      className="h-full w-full object-cover"
+                      src={sourceUrl}
+                      alt="Crop preview"
+                      style={{ objectPosition: `${cropFocus.x * 100}% ${cropFocus.y * 100}%` }}
+                    />
+                  ) : (
+                    <div className="grid h-full place-items-center px-5 text-center text-sm text-stone-500">{t.noCrop}</div>
+                  )}
+                </div>
+
+                <div className="flex flex-col justify-between gap-3">
+                  <div className="rounded-md border border-white/10 bg-black/20 px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-stone-300">{t.cropRatio}</span>
+                      <span className="font-mono text-xs text-teal-300">1:1</span>
+                    </div>
+                  </div>
+                  <RangeControl
+                    label={t.horizontal}
+                    value={Math.round(cropFocus.x * 100)}
+                    disabled={!sourceUrl || status === "running"}
+                    onChange={(value) => setCropFocus((focus) => ({ ...focus, x: value / 100 }))}
+                  />
+                  <RangeControl
+                    label={t.vertical}
+                    value={Math.round(cropFocus.y * 100)}
+                    disabled={!sourceUrl || status === "running"}
+                    onChange={(value) => setCropFocus((focus) => ({ ...focus, y: value / 100 }))}
+                  />
+                  <button
+                    type="button"
+                    disabled={!sourceFile || status === "running"}
+                    onClick={() => void generateDigitArt()}
+                    className="min-h-10 rounded-md border border-white/10 px-3 text-sm font-semibold text-stone-100 transition hover:border-teal-300/70 disabled:cursor-not-allowed disabled:text-stone-500"
+                  >
+                    {t.generateCrop}
+                  </button>
+                </div>
+              </div>
+            </WorkflowBlock>
+
+            <WorkflowBlock index={2} title={t.stepDigits} active={Boolean(sourceFile) && !art}>
+              <div className="grid gap-3 sm:grid-cols-[1fr_1fr]">
+                <div>
+                  <p className="mb-2 text-xs font-medium text-stone-400">{t.fixedResolution}</p>
+                  <dl className="grid grid-cols-3 gap-2 text-center">
+                    <Metric label="Grid" value={`${GRID_WIDTH}x${GRID_HEIGHT}`} />
+                    <Metric label={t.suffix} value={`${SUFFIX_DIGITS}`} />
+                    <Metric label={t.digits} value={TOTAL_DIGITS.toLocaleString()} />
+                  </dl>
+                </div>
+                <ToggleRow
+                  label={t.digitTone}
+                  help={t.digitToneHelp}
+                  enabled={digitTone}
+                  tone="amber"
+                  onToggle={() => setDigitTone((value) => !value)}
                 />
               </div>
-              <label className="mt-3 block text-xs text-stone-400">
-                {t.horizontal}
-                <input
-                  className="mt-2 w-full accent-teal-300"
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={Math.round(cropFocus.x * 100)}
-                  onChange={(event) => setCropFocus((focus) => ({ ...focus, x: Number(event.target.value) / 100 }))}
+            </WorkflowBlock>
+
+            <WorkflowBlock index={3} title={t.stepPrime} active={Boolean(art)}>
+              <div className="grid gap-3">
+                <ToggleRow
+                  label={t.gaussian}
+                  help={t.gaussianHelp}
+                  enabled={gaussian}
+                  tone="teal"
+                  onToggle={() => setGaussian((value) => !value)}
                 />
-              </label>
-              <label className="mt-2 block text-xs text-stone-400">
-                {t.vertical}
-                <input
-                  className="mt-2 w-full accent-teal-300"
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={Math.round(cropFocus.y * 100)}
-                  onChange={(event) => setCropFocus((focus) => ({ ...focus, y: Number(event.target.value) / 100 }))}
-                />
-              </label>
-              <button
-                type="button"
-                disabled={status === "running"}
-                onClick={() => void generateDigitArt()}
-                className="mt-3 w-full rounded-md border border-white/10 px-3 py-2 text-sm font-semibold text-stone-100 transition hover:border-teal-300/70 disabled:cursor-not-allowed disabled:text-stone-500"
-              >
-                {t.generateCrop}
-              </button>
-            </div>
-          ) : null}
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    disabled={!canSearch}
+                    onClick={() => startSearch()}
+                    className="min-h-11 rounded-md bg-teal-300 px-4 text-sm font-semibold text-zinc-950 transition hover:bg-teal-200 disabled:cursor-not-allowed disabled:bg-stone-800 disabled:text-stone-500"
+                  >
+                    {t.start}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={status !== "running"}
+                    onClick={stopSearch}
+                    className="min-h-11 rounded-md border border-rose-300/40 px-4 text-sm font-semibold text-rose-100 transition hover:border-rose-300 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-stone-500"
+                  >
+                    {t.stop}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!art || status === "running"}
+                    onClick={retrySearch}
+                    className="min-h-11 rounded-md border border-white/10 px-4 text-sm font-semibold text-stone-100 transition hover:border-teal-300/70 disabled:cursor-not-allowed disabled:text-stone-500"
+                  >
+                    {t.retry}
+                  </button>
+                </div>
+              </div>
+            </WorkflowBlock>
+          </section>
 
-          <div className="mt-4 rounded-md border border-white/10 bg-black/20 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium text-stone-200">{t.gaussian}</span>
-              <button
-                type="button"
-                onClick={() => setGaussian((value) => !value)}
-                className={`h-7 w-14 rounded-full border p-1 transition ${
-                  gaussian ? "border-teal-300 bg-teal-300" : "border-white/15 bg-stone-800"
-                }`}
-                aria-pressed={gaussian}
-              >
-                <span
-                  className={`block h-5 w-5 rounded-full bg-zinc-950 transition ${gaussian ? "translate-x-7" : "translate-x-0"}`}
-                />
-              </button>
-            </div>
-            <p className="mt-2 text-xs leading-5 text-stone-400">{t.gaussianHelp}</p>
-            <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
-              <span className="text-sm font-medium text-stone-200">{t.digitTone}</span>
-              <button
-                type="button"
-                onClick={() => setDigitTone((value) => !value)}
-                className={`h-7 w-14 rounded-full border p-1 transition ${
-                  digitTone ? "border-amber-300 bg-amber-300" : "border-white/15 bg-stone-800"
-                }`}
-                aria-pressed={digitTone}
-              >
-                <span
-                  className={`block h-5 w-5 rounded-full bg-zinc-950 transition ${digitTone ? "translate-x-7" : "translate-x-0"}`}
-                />
-              </button>
-            </div>
-            <p className="mt-2 text-xs leading-5 text-stone-400">{t.digitToneHelp}</p>
-          </div>
-
-          <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
-            <Metric label="Grid" value={`${GRID_WIDTH}x${GRID_HEIGHT}`} />
-            <Metric label={t.suffix} value="16" />
-            <Metric label={t.digits} value={TOTAL_DIGITS.toLocaleString()} />
-          </dl>
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-            <button
-              type="button"
-              disabled={!canSearch}
-              onClick={() => startSearch()}
-              className="rounded-md bg-teal-300 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-teal-200 disabled:cursor-not-allowed disabled:bg-stone-700 disabled:text-stone-400"
-            >
-              {t.start}
-            </button>
-            <button
-              type="button"
-              disabled={status !== "running"}
-              onClick={stopSearch}
-              className="rounded-md border border-rose-300/40 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-stone-500"
-            >
-              {t.stop}
-            </button>
-            <button
-              type="button"
-              disabled={!art || status === "running"}
-              onClick={retrySearch}
-              className="rounded-md border border-white/10 px-4 py-3 text-sm font-semibold text-stone-100 transition hover:border-teal-300/70 disabled:cursor-not-allowed disabled:text-stone-500"
-            >
-              {t.retry}
-            </button>
-          </div>
-
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-stone-400">
-              <span>{statusLabel(status, t)}</span>
-              <span>{attempts.toLocaleString()} / {MAX_ATTEMPTS.toLocaleString()}</span>
-            </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-800">
-              <div
-                className="h-full rounded-full bg-teal-300 transition-all"
-                style={{ width: `${status === "running" ? Math.max(1, progress * 100) : Math.round(progress * 100)}%` }}
-              />
-            </div>
-            <p className="mt-3 min-h-10 text-sm leading-5 text-stone-300">{displayMessage}</p>
-            <p className="font-mono text-xs text-stone-500">{t.mr}: {probablePrimeTests.toLocaleString()}</p>
-          </div>
-        </section>
-
-        <section className="grid min-w-0 gap-5">
-          <div className="rounded-lg border border-white/10 bg-zinc-950/70 p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-stone-100">{t.grid}</h2>
-              <span className="font-mono text-xs text-stone-500">{art ? `${TOTAL_DIGITS.toLocaleString()} digits` : "waiting"}</span>
-            </div>
-            <DigitGrid value={gridText} tone={digitTone} heightClass="h-[420px]" placeholder={t.gridPlaceholder} />
-          </div>
-
-          <div className="rounded-lg border border-white/10 bg-zinc-950/70 p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-stone-100">{t.result}</h2>
-              <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
-                <button
-                  type="button"
-                  disabled={!prime}
-                  onClick={() => void copyText(prime, t.plainPrime)}
-                  className="rounded-md bg-stone-100 px-3 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-stone-700 disabled:text-stone-400"
-                >
-                  {t.copyPlain}
-                </button>
-                <button
-                  type="button"
-                  disabled={!wrappedPrime}
-                  onClick={() => void copyText(wrappedPrime, t.wrappedPrime)}
-                  className="rounded-md border border-white/10 px-3 py-2 text-xs font-semibold text-stone-100 transition hover:border-teal-300/70 disabled:cursor-not-allowed disabled:text-stone-500"
-                >
-                  {t.copyWrapped}
-                </button>
-                <button
-                  type="button"
-                  disabled={!wrappedPrime}
-                  onClick={downloadPrimePng}
-                  className="rounded-md border border-amber-300/40 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:border-amber-300 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-stone-500"
-                >
-                  {t.savePng}
-                </button>
+          <section className="min-w-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-950/75 shadow-2xl shadow-black/30 backdrop-blur">
+            <div className="flex flex-col gap-2 border-b border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-stone-50">{t.outputTitle} <span className="font-mono text-sm text-stone-500">({GRID_WIDTH}x{GRID_HEIGHT})</span></h2>
+                <p className="text-xs text-stone-500">{t.outputMeta}</p>
+              </div>
+              <div className="flex items-center gap-3 font-mono text-xs text-stone-500">
+                <span>{t.gaussian}: <span className={gaussian ? "text-teal-300" : "text-stone-400"}>{gaussian ? "ON" : "OFF"}</span></span>
+                <span>{art ? `${TOTAL_DIGITS.toLocaleString()} digits` : statusLabel(status, t)}</span>
               </div>
             </div>
-            <textarea
-              className="digit-grid h-44 w-full rounded-md border border-white/10 bg-black/40 p-3 font-mono text-[10px] leading-5 text-teal-100 outline-none focus:border-teal-300/70"
-              value={prime}
-              readOnly
-              placeholder={t.resultPlaceholder(TOTAL_DIGITS)}
-              spellCheck={false}
-            />
-            <div className="mt-3">
-              <DigitGrid value={wrappedPrime} tone={digitTone} heightClass="h-52" placeholder={t.wrappedPlaceholder} />
+
+            <div className="p-4">
+              <DigitGrid value={gridText} tone={digitTone} heightClass="h-[340px] sm:h-[470px] xl:h-[560px]" placeholder={t.gridPlaceholder} />
             </div>
-          </div>
-        </section>
+
+            <div className="border-t border-white/10 px-4 py-4">
+              {prime ? (
+                <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px]">
+                  <div className="grid gap-3">
+                    <ResultField label={t.primeUnwrapped} value={prime} placeholder={t.resultPlaceholder(TOTAL_DIGITS)} />
+                    <ResultField label={t.primeWrapped} value={wrappedPrime} placeholder={t.wrappedPlaceholder} />
+                  </div>
+                  <div className="grid content-start gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void copyText(prime, t.plainPrime)}
+                      className="min-h-10 rounded-md bg-stone-100 px-3 text-xs font-semibold text-zinc-950 transition hover:bg-white"
+                    >
+                      {t.copyPlain}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void copyText(wrappedPrime, t.wrappedPrime)}
+                      className="min-h-10 rounded-md border border-white/10 px-3 text-xs font-semibold text-stone-100 transition hover:border-teal-300/70"
+                    >
+                      {t.copyWrapped}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={downloadPrimePng}
+                      className="min-h-10 rounded-md border border-amber-300/40 px-3 text-xs font-semibold text-amber-100 transition hover:border-amber-300"
+                    >
+                      {t.savePng}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-stone-500">{t.noPrimeYet}</div>
+              )}
+            </div>
+          </section>
         </div>
+
+        <StatusStrip
+          label={t.statusStrip}
+          status={statusLabel(status, t)}
+          attempts={`${attempts.toLocaleString()} / ${MAX_ATTEMPTS.toLocaleString()}`}
+          tests={probablePrimeTests.toLocaleString()}
+          suffix={currentSuffix || "-"}
+          progress={progress}
+          message={displayMessage}
+          t={t}
+        />
       </div>
     </main>
   );
@@ -619,6 +677,191 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border border-white/10 bg-black/20 px-2 py-3">
       <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-stone-500">{label}</dt>
       <dd className="mt-1 text-sm font-semibold text-stone-100">{value}</dd>
+    </div>
+  );
+}
+
+function StepRail({
+  steps,
+}: {
+  steps: Array<{ index: number; label: string; complete: boolean; active: boolean }>;
+}) {
+  return (
+    <nav className="rounded-lg border border-white/10 bg-zinc-950/75 px-3 py-3 backdrop-blur lg:min-h-[760px]">
+      <ol className="grid grid-cols-3 gap-2 lg:grid-cols-1 lg:gap-0">
+        {steps.map((step, index) => (
+          <li key={step.index} className="relative flex items-center gap-2 lg:flex-col lg:gap-2">
+            <div
+              className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border font-mono text-sm transition ${
+                step.complete
+                  ? "border-teal-300 bg-teal-300 text-zinc-950"
+                  : step.active
+                    ? "border-teal-300 text-teal-200"
+                    : "border-white/15 text-stone-500"
+              }`}
+            >
+              {step.index}
+            </div>
+            <span className={`text-xs font-semibold ${step.active || step.complete ? "text-teal-200" : "text-stone-500"}`}>{step.label}</span>
+            {index < steps.length - 1 ? <span className="hidden h-20 border-l border-dashed border-teal-300/30 lg:block" /> : null}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+function WorkflowBlock({
+  index,
+  title,
+  active,
+  children,
+}: {
+  index: number;
+  title: string;
+  active: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section className="border-b border-white/10 px-4 py-4 last:border-b-0">
+      <div className="mb-3 flex items-center gap-2">
+        <span
+          className={`grid h-7 w-7 place-items-center rounded-full border font-mono text-xs ${
+            active ? "border-teal-300 text-teal-200" : "border-white/15 text-stone-500"
+          }`}
+        >
+          {index}
+        </span>
+        <h2 className="text-base font-semibold text-stone-100">{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ToggleRow({
+  label,
+  help,
+  enabled,
+  tone,
+  onToggle,
+}: {
+  label: string;
+  help: string;
+  enabled: boolean;
+  tone: "teal" | "amber";
+  onToggle: () => void;
+}) {
+  const activeClass = tone === "amber" ? "border-amber-300 bg-amber-300" : "border-teal-300 bg-teal-300";
+
+  return (
+    <div className="rounded-md border border-white/10 bg-black/20 px-3 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-stone-200">{label}</span>
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`h-7 w-14 rounded-full border p-1 transition ${enabled ? activeClass : "border-white/15 bg-stone-800"}`}
+          aria-pressed={enabled}
+        >
+          <span className={`block h-5 w-5 rounded-full bg-zinc-950 transition ${enabled ? "translate-x-7" : "translate-x-0"}`} />
+        </button>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-stone-500">{help}</p>
+    </div>
+  );
+}
+
+function RangeControl({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  disabled: boolean;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block text-xs text-stone-400">
+      <span className="flex justify-between">
+        <span>{label}</span>
+        <span className="font-mono text-stone-500">{value}%</span>
+      </span>
+      <input
+        className="mt-2 w-full accent-teal-300 disabled:opacity-40"
+        type="range"
+        min="0"
+        max="100"
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+    </label>
+  );
+}
+
+function ResultField({ label, value, placeholder }: { label: string; value: string; placeholder: string }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-stone-400">{label}</span>
+      <textarea
+        className="digit-grid h-24 w-full rounded-md border border-white/10 bg-black/40 p-3 font-mono text-[10px] leading-5 text-teal-100 outline-none focus:border-teal-300/70"
+        value={value}
+        readOnly
+        placeholder={placeholder}
+        spellCheck={false}
+      />
+    </label>
+  );
+}
+
+function StatusStrip({
+  label,
+  status,
+  attempts,
+  tests,
+  suffix,
+  progress,
+  message,
+  t,
+}: {
+  label: string;
+  status: string;
+  attempts: string;
+  tests: string;
+  suffix: string;
+  progress: number;
+  message: string;
+  t: (typeof translations)[Locale];
+}) {
+  return (
+    <section className="rounded-lg border border-white/10 bg-zinc-950/75 px-4 py-3 backdrop-blur">
+      <div className="grid gap-3 lg:grid-cols-[150px_140px_190px_220px_minmax(0,1fr)] lg:items-center">
+        <StatusMetric label={label} value={status} />
+        <StatusMetric label={t.mr} value={tests} />
+        <StatusMetric label={t.attemptCount} value={attempts} />
+        <StatusMetric label={t.currentSuffix} value={suffix} />
+        <div className="min-w-0">
+          <div className="mb-2 flex justify-between gap-3 text-xs text-stone-400">
+            <span className="truncate">{message}</span>
+            <span className="font-mono">{Math.round(progress * 100)}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-stone-800">
+            <div className="h-full rounded-full bg-teal-300 transition-all" style={{ width: `${Math.max(0, Math.min(100, progress * 100))}%` }} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StatusMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 border-white/10 lg:border-r lg:pr-4">
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-stone-500">{label}</p>
+      <p className="truncate font-mono text-sm text-stone-100">{value}</p>
     </div>
   );
 }
@@ -727,11 +970,14 @@ function digitColor(digit: string): string {
   return `hsl(42 72% ${18 + value * 7}%)`;
 }
 
-function resolveLocale(option: LocaleOption): Locale {
+function resolveLocale(option: LocaleOption, autoLocale: Locale): Locale {
   if (option !== "auto") {
     return option;
   }
+  return autoLocale;
+}
 
+function detectBrowserLocale(): Locale {
   if (typeof navigator === "undefined") {
     return "ja";
   }
