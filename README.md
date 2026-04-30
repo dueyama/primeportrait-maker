@@ -1,0 +1,38 @@
+# PrimePortrait Maker
+
+画像を100x100の数字グリッドに変換し、最後の16桁だけを変えて10,000桁の巨大素数を探すNext.jsアプリです。
+
+## 特徴
+
+- JPG/PNGアップロード
+- Canvas APIによる正方形クロップ、グレースケール化、0〜9量子化、Floyd-Steinberg系ディザリング
+- ブラウザ `BigInt` + Web WorkerによるMiller-Rabin確率素数判定
+- 通常素数 / Gaussian Prime `n mod 4 = 3` モード
+- 数字グリッドPNGダウンロード
+- 完成した巨大整数のコピー
+
+## ローカル起動
+
+```bash
+npm install
+npm run dev
+```
+
+ブラウザで `http://localhost:3000` を開きます。
+
+## Vercel公開
+
+1. このディレクトリをGitHubリポジトリとしてpushします。
+2. Vercelで `Add New Project` からGitHubリポジトリをImportします。
+3. Framework Presetは `Next.js` のままでDeployします。
+
+このMVPはPython APIやVercel Functionsを使いません。画像処理と素数探索はブラウザ側で完結するため、Vercel HobbyのFunction実行時間制限を避けられます。
+
+## 探索パラメータ
+
+- Grid: `100x100`
+- Total digits: `10,000`
+- Variable suffix: `16` digits
+- Max attempts: `100,000`
+
+探索上限に到達した場合は、再探索で別のsuffix候補範囲を試してください。
