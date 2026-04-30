@@ -21,11 +21,17 @@ if [ ! -d "node_modules" ]; then
   echo
 fi
 
+if [ ! -f ".next/BUILD_ID" ]; then
+  echo "Building production app..."
+  npm run build
+  echo
+fi
+
 URL="http://localhost:3000"
-echo "Starting PrimePortrait Maker at $URL"
+echo "Starting PrimePortrait Maker in production mode at $URL"
 echo "Leave this Terminal window open while using the app."
 echo "Press Control-C here to stop the server."
 echo
 
 (sleep 2 && open "$URL") >/dev/null 2>&1 &
-npm run dev
+npm run start
