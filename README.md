@@ -59,15 +59,6 @@ npm run typecheck
 npm run build
 ```
 
-## Deploy to Vercel
-
-1. Push this repository to GitHub.
-2. Import the repository from Vercel.
-3. Keep the framework preset as `Next.js`.
-4. Deploy.
-
-Because the prime search runs in the browser, the app avoids serverless function time limits on Vercel Hobby.
-
 ## Search Parameters
 
 Current MVP defaults:
@@ -101,4 +92,5 @@ This is close in spirit to how cryptographic prime generation starts: many syste
 - This is an experimental math-art tool, not a cryptographic prime generator.
 - Miller-Rabin is used as a probabilistic primality test, so app results should be read as probable-prime candidates that may still be composite.
 - Image processing and prime search run on the local machine in the browser, so performance depends on the user's CPU, browser, and current system load.
+- No backend or serverless function is needed for the current app.
 - Uploaded images stay local in the browser and are not sent to a server by this app.
