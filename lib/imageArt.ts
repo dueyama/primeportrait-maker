@@ -11,8 +11,8 @@ export type CropFocus = {
   y: number;
 };
 
-export const GRID_WIDTH = 100;
-export const GRID_HEIGHT = 60;
+export const GRID_WIDTH = 80;
+export const GRID_HEIGHT = 48;
 export const TOTAL_DIGITS = GRID_WIDTH * GRID_HEIGHT;
 
 const TEXT_ASPECT_FIX = 0.6;

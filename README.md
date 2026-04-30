@@ -1,6 +1,6 @@
 # PrimePortrait Maker
 
-画像を100x60の数字グリッドに変換し、最後の16桁だけを変えて6,000桁の巨大素数を探すNext.jsアプリです。
+画像を80x48の数字グリッドに変換し、最後の16桁だけを変えて3,840桁の巨大素数を探すNext.jsアプリです。
 
 ## 特徴
 
@@ -35,8 +35,8 @@ npm run dev
 
 ## 探索パラメータ
 
-- Grid: `100x60`
-- Total digits: `6,000`
+- Grid: `80x48`
+- Total digits: `3,840`
 - Variable suffix: `16` digits
 - Max attempts: `100,000`
 

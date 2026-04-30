@@ -24,11 +24,12 @@ type WorkerMessage =
 
 const SUFFIX_DIGITS = 16;
 const MAX_ATTEMPTS = 100_000;
+const TOTAL_DIGITS_LABEL = TOTAL_DIGITS.toLocaleString("en-US");
 
 const translations = {
   ja: {
     appTitle: "PrimePortrait Maker",
-    title: "画像を6,000桁の素数肖像へ",
+    title: `画像を${TOTAL_DIGITS_LABEL}桁の素数肖像へ`,
     subtitle: `写真を正方形に切り抜いて、コピペ後も正方形に近く見える${GRID_WIDTH}x${GRID_HEIGHT}の数字グリッドに変換します。`,
     language: "言語",
     auto: "自動",
@@ -59,7 +60,7 @@ const translations = {
     notFound: "未発見",
     cancelled: "停止済み",
     error: "エラー",
-    noImage: "画像をアップロードすると、100x60の数字ポートレートを生成します。",
+    noImage: `画像をアップロードすると、${GRID_WIDTH}x${GRID_HEIGHT}の数字ポートレートを生成します。`,
     pickImageFirst: "先に画像をアップロードしてください。",
     generating: "切り抜き範囲から数字ポートレートを生成しています。",
     generated: (width: number, height: number, digits: number) => `${width}x${height} = ${digits.toLocaleString()}桁の数字ポートレートを生成しました。`,
@@ -85,7 +86,7 @@ const translations = {
   },
   en: {
     appTitle: "PrimePortrait Maker",
-    title: "Turn an image into a 6,000-digit prime portrait",
+    title: `Turn an image into a ${TOTAL_DIGITS_LABEL}-digit prime portrait`,
     subtitle: `Crop a photo to a square and convert it into a ${GRID_WIDTH}x${GRID_HEIGHT} digit grid that stays close to square when pasted as text.`,
     language: "Language",
     auto: "Auto",
@@ -116,7 +117,7 @@ const translations = {
     notFound: "Not found",
     cancelled: "Stopped",
     error: "Error",
-    noImage: "Upload an image to generate a 100x60 digit portrait.",
+    noImage: `Upload an image to generate a ${GRID_WIDTH}x${GRID_HEIGHT} digit portrait.`,
     pickImageFirst: "Upload an image first.",
     generating: "Generating a digit portrait from the crop.",
     generated: (width: number, height: number, digits: number) => `Generated a ${width}x${height} digit portrait with ${digits.toLocaleString()} digits.`,
@@ -142,7 +143,7 @@ const translations = {
   },
   zh: {
     appTitle: "PrimePortrait Maker",
-    title: "把图像变成6,000位素数肖像",
+    title: `把图像变成${TOTAL_DIGITS_LABEL}位素数肖像`,
     subtitle: `先把照片裁成正方形，再转换成${GRID_WIDTH}x${GRID_HEIGHT}数字网格，复制粘贴后也尽量接近正方形。`,
     language: "语言",
     auto: "自动",
@@ -173,7 +174,7 @@ const translations = {
     notFound: "未找到",
     cancelled: "已停止",
     error: "错误",
-    noImage: "上传图片后会生成100x60数字肖像。",
+    noImage: `上传图片后会生成${GRID_WIDTH}x${GRID_HEIGHT}数字肖像。`,
     pickImageFirst: "请先上传图片。",
     generating: "正在从裁剪区域生成数字肖像。",
     generated: (width: number, height: number, digits: number) => `已生成${width}x${height}，共${digits.toLocaleString()}位的数字肖像。`,
