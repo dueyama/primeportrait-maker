@@ -30,7 +30,7 @@ const TOTAL_DIGITS_LABEL = TOTAL_DIGITS.toLocaleString("en-US");
 const translations = {
   ja: {
     appTitle: "PrimePortrait Maker",
-    title: `画像を${TOTAL_DIGITS_LABEL}桁の素数肖像へ`,
+    title: `画像を${TOTAL_DIGITS_LABEL}桁の確率的素数肖像へ`,
     subtitle: `写真を正方形に切り抜いて、コピペ後も正方形に近く見える${GRID_WIDTH}x${GRID_HEIGHT}の数字グリッドに変換します。`,
     language: "言語",
     auto: "自動",
@@ -43,9 +43,26 @@ const translations = {
     outputTitle: "デジタルポートレート",
     outputMeta: "数字の濃淡: 0-9",
     howItWorksTitle: "仕組み",
-    howItWorksBody: `画像はこのブラウザ内で正方形に切り抜き、${GRID_WIDTH}x${GRID_HEIGHT}個の明度を数字に変換します。先頭は桁数維持のため必ず0以外にし、素数探索では上位桁を固定して最後の${SUFFIX_DIGITS}桁だけを変えます。`,
-    localProcessingTitle: "ローカル処理",
-    localProcessingBody: "画像処理と素数判定はサーバーではなく、この端末のブラウザ上で実行します。3,840桁では通常素数なら数千候補、Gaussian Primeならその約2倍の候補が目安です。実時間はCPU、ブラウザ、ほかのアプリの負荷、生成された数字列、探索の運によって変わります。",
+    howItWorksBody: `画像はこのブラウザ内で正方形に切り抜き、${GRID_WIDTH}x${GRID_HEIGHT}個の明度を数字に変換します。先頭は桁数維持のため必ず0以外にし、探索では上位桁を固定して最後の${SUFFIX_DIGITS}桁だけを変えます。結果は証明済み素数ではなく、Miller-Rabinを通った確率的素数候補です。まれに本当は素数でない場合があります。`,
+    localProcessingTitle: "素数探索の仕組み",
+    localProcessingBody: `上位桁を固定し、最後の${SUFFIX_DIGITS}桁だけを変えて素数候補を探します。処理はこの端末のブラウザ内で実行します。`,
+    moreDetails: "詳しくは",
+    close: "閉じる",
+    primeDetailTitle: "素数探索の詳しい仕組み",
+    primeDetailIntro: "画像から作った数字列を改行なしの巨大整数として扱い、画像として重要な上位桁は固定したまま、末尾だけを差し替えて素数になる候補を探します。",
+    primeDetailSteps: [
+      "数字グリッドを1本の10進文字列に連結し、ブラウザのBigIntで扱います。",
+      `画像の見た目を崩さないため、上位桁は固定し、最後の${SUFFIX_DIGITS}桁だけを変更します。`,
+      "探索開始位置は元の末尾にランダムseedを足した周辺から始めます。再探索すると別の範囲を試します。",
+      "偶数終端と5終端は素数にならないので即座に飛ばします。",
+      "さらに997以下の小素数で割り切れる候補をふるい落とします。",
+      "残った候補だけをMiller-Rabinで判定します。現在の基数は2, 3, 5, 7です。",
+      "Miller-Rabinは確率的判定です。落ちた候補は確実に合成数ですが、通った候補は数学的に証明済みの素数ではなく、強い素数候補です。つまり、素数でない場合があります。",
+      "Gaussian Primeモードでは、確率的素数候補であることに加えて n mod 4 = 3 も要求します。",
+    ],
+    primeDetailEstimate: "3,840桁のランダムな整数では、通常素数なら数千候補に1個程度が目安です。Gaussian Primeはその約半分だけを採用するので、候補数はおおよそ2倍になります。",
+    primeDetailLocal: "画像処理も素数判定もサーバーには送らず、この端末のブラウザ上で動きます。実時間はCPU、ブラウザ、ほかのアプリの負荷、生成された数字列、探索の運で変わります。",
+    probablePrimeWarning: "注意: このアプリの結果はMiller-Rabinによる確率的素数候補です。証明済み素数ではなく、素数でない場合があります。",
     fileMeta: "入力画像",
     noCrop: "画像を選択すると切り抜きが表示されます。",
     cropRatio: "正方形切り抜き",
@@ -54,9 +71,9 @@ const translations = {
     statusStrip: "探索ステータス",
     attemptCount: "試行回数",
     currentSuffix: "現在の接尾辞",
-    noPrimeYet: "素数が見つかるとコピーとPNG保存が使えます。",
-    primeUnwrapped: "素数（改行なし）",
-    primeWrapped: "素数（改行付き）",
+    noPrimeYet: "確率的素数候補が見つかるとコピーとPNG保存が使えます。",
+    primeUnwrapped: "確率的素数候補（改行なし）",
+    primeWrapped: "確率的素数候補（改行付き）",
     upload: "画像アップロード",
     crop: "切り抜き",
     cropPosition: "切り抜き位置",
@@ -75,7 +92,7 @@ const translations = {
     result: "完成した巨大整数",
     copyPlain: "改行なしコピー",
     copyWrapped: "改行付きコピー",
-    savePng: "素数PNG保存",
+    savePng: "候補PNG保存",
     waiting: "待機中",
     running: "探索中",
     found: "発見",
@@ -87,28 +104,28 @@ const translations = {
     generating: "切り抜き範囲から数字ポートレートを生成しています。",
     generated: (width: number, height: number, digits: number) => `${width}x${height} = ${digits.toLocaleString()}桁の数字ポートレートを生成しました。`,
     searchingGaussian: "Gaussian Prime条件で探索しています。",
-    searchingPrime: "素数を探索しています。",
+    searchingPrime: "確率的素数候補を探索しています。",
     preparing: "探索準備中: 小素数ふるいを初期化しています。",
     progress: (suffix: string, tests: number) => `探索中: suffix ${suffix} / MR ${tests.toLocaleString()}回`,
-    foundGaussian: (digits: number, tests: number) => `この数は${digits.toLocaleString()}桁のGaussian Prime候補です。MR ${tests.toLocaleString()}回で見つかりました。`,
-    foundPrime: (digits: number, tests: number) => `この数は${digits.toLocaleString()}桁の素数候補です。MR ${tests.toLocaleString()}回で見つかりました。`,
+    foundGaussian: (digits: number, tests: number) => `この数は${digits.toLocaleString()}桁のGaussian Prime候補です。証明済みではなく、素数でない場合があります。MR ${tests.toLocaleString()}回で見つかりました。`,
+    foundPrime: (digits: number, tests: number) => `この数は${digits.toLocaleString()}桁の確率的素数候補です。証明済みではなく、素数でない場合があります。MR ${tests.toLocaleString()}回で見つかりました。`,
     reachedLimit: "探索上限に到達しました。再探索で別の候補範囲を試せます。",
     cancelledMessage: "素数探索を停止しました。",
     workerError: "Workerでエラーが発生しました。",
     copied: (label: string) => `${label}をクリップボードにコピーしました。`,
-    plainPrime: "改行なしの巨大素数",
-    wrappedPrime: "改行付きの巨大素数",
-    pngSaved: "素数になった数字画像PNGを保存しました。",
+    plainPrime: "改行なしの巨大な確率的素数候補",
+    wrappedPrime: "改行付きの巨大な確率的素数候補",
+    pngSaved: "確率的素数候補になった数字画像PNGを保存しました。",
     gridPlaceholder: "数値化すると数字グリッドを表示します。",
-    resultPlaceholder: (digits: number) => `素数が見つかると、改行なしの${digits.toLocaleString()}桁整数がここに表示されます。`,
-    wrappedPlaceholder: "同じ素数を画像グリッドと同じ幅で改行した版です。",
+    resultPlaceholder: (digits: number) => `確率的素数候補が見つかると、改行なしの${digits.toLocaleString()}桁整数がここに表示されます。`,
+    wrappedPlaceholder: "同じ候補を画像グリッドと同じ幅で改行した版です。",
     mr: "Miller-Rabin",
     suffix: "Suffix",
     digits: "Digits",
   },
   en: {
     appTitle: "PrimePortrait Maker",
-    title: `Turn an image into a ${TOTAL_DIGITS_LABEL}-digit prime portrait`,
+    title: `Turn an image into a ${TOTAL_DIGITS_LABEL}-digit probable-prime portrait`,
     subtitle: `Crop a photo to a square and convert it into a ${GRID_WIDTH}x${GRID_HEIGHT} digit grid that stays close to square when pasted as text.`,
     language: "Language",
     auto: "Auto",
@@ -121,9 +138,26 @@ const translations = {
     outputTitle: "Digital portrait",
     outputMeta: "Digit tone: 0-9",
     howItWorksTitle: "How it works",
-    howItWorksBody: `The image is cropped to a square in this browser, then ${GRID_WIDTH}x${GRID_HEIGHT} luminance samples are mapped to digits. The first digit is forced to be non-zero to preserve the digit count. Prime search keeps the upper digits fixed and varies only the final ${SUFFIX_DIGITS} digits.`,
-    localProcessingTitle: "Local processing",
-    localProcessingBody: "Image processing and primality checks run in this browser, not on a server. At 3,840 digits, a normal prime usually takes a few thousand candidate suffixes on average; Gaussian Prime mode is roughly twice that. Wall-clock time depends on your CPU, browser, other local workload, the generated digit string, and search luck.",
+    howItWorksBody: `The image is cropped to a square in this browser, then ${GRID_WIDTH}x${GRID_HEIGHT} luminance samples are mapped to digits. The first digit is forced to be non-zero to preserve the digit count. Search keeps the upper digits fixed and varies only the final ${SUFFIX_DIGITS} digits. The result is not a proven prime; it is a Miller-Rabin probable-prime candidate and may still be composite.`,
+    localProcessingTitle: "How prime search works",
+    localProcessingBody: `The upper digits stay fixed and only the final ${SUFFIX_DIGITS} digits are varied. The search runs locally in this browser.`,
+    moreDetails: "Details",
+    close: "Close",
+    primeDetailTitle: "Prime Search Details",
+    primeDetailIntro: "The digit portrait is joined into one unwrapped integer. To preserve the visible portrait, the important upper digits stay fixed while only the suffix is replaced until a prime candidate is found.",
+    primeDetailSteps: [
+      "The digit grid is joined into one decimal string and handled with browser BigInt.",
+      `The upper digits stay fixed, and only the final ${SUFFIX_DIGITS} digits are changed.`,
+      "The starting point is the original suffix plus a random seed. Search again tries another range.",
+      "Candidates ending in an even digit or 5 are skipped immediately.",
+      "Candidates divisible by small primes up to 997 are filtered before expensive tests.",
+      "Only survivors are checked with Miller-Rabin. The current bases are 2, 3, 5, and 7.",
+      "Miller-Rabin is probabilistic: a rejected candidate is definitely composite, but a passing candidate is a strong probable prime, not a formal proof of primality. It may still be composite.",
+      "Gaussian Prime mode also requires n mod 4 = 3.",
+    ],
+    primeDetailEstimate: "For a random 3,840-digit integer, a normal prime is expected after a few thousand plausible candidates on average. Gaussian Prime accepts about half of those primes, so it can take roughly twice as many candidates.",
+    primeDetailLocal: "Image processing and primality checks are not sent to a server. They run in this browser, so wall-clock time depends on CPU, browser, other local workload, the generated digit string, and search luck.",
+    probablePrimeWarning: "Note: results are Miller-Rabin probable-prime candidates. They are not proven primes and may still be composite.",
     fileMeta: "Input image",
     noCrop: "Choose an image to show the crop.",
     cropRatio: "Square crop",
@@ -132,9 +166,9 @@ const translations = {
     statusStrip: "Search status",
     attemptCount: "Attempts",
     currentSuffix: "Current suffix",
-    noPrimeYet: "Copy and PNG actions appear after a prime is found.",
-    primeUnwrapped: "Prime, unwrapped",
-    primeWrapped: "Prime, wrapped",
+    noPrimeYet: "Copy and PNG actions appear after a probable prime is found.",
+    primeUnwrapped: "Probable prime, unwrapped",
+    primeWrapped: "Probable prime, wrapped",
     upload: "Upload image",
     crop: "Crop",
     cropPosition: "Crop position",
@@ -153,7 +187,7 @@ const translations = {
     result: "Prime result",
     copyPlain: "Copy unwrapped",
     copyWrapped: "Copy wrapped",
-    savePng: "Save prime PNG",
+    savePng: "Save candidate PNG",
     waiting: "Idle",
     running: "Searching",
     found: "Found",
@@ -165,28 +199,28 @@ const translations = {
     generating: "Generating a digit portrait from the crop.",
     generated: (width: number, height: number, digits: number) => `Generated a ${width}x${height} digit portrait with ${digits.toLocaleString()} digits.`,
     searchingGaussian: "Searching with the Gaussian Prime condition.",
-    searchingPrime: "Searching for a prime.",
+    searchingPrime: "Searching for a probable prime.",
     preparing: "Preparing: initializing the small-prime sieve.",
     progress: (suffix: string, tests: number) => `Searching: suffix ${suffix} / MR ${tests.toLocaleString()} tests`,
-    foundGaussian: (digits: number, tests: number) => `Found a ${digits.toLocaleString()}-digit Gaussian Prime candidate after ${tests.toLocaleString()} MR tests.`,
-    foundPrime: (digits: number, tests: number) => `Found a ${digits.toLocaleString()}-digit prime candidate after ${tests.toLocaleString()} MR tests.`,
+    foundGaussian: (digits: number, tests: number) => `Found a ${digits.toLocaleString()}-digit Gaussian Prime candidate after ${tests.toLocaleString()} MR tests. It is not proven and may still be composite.`,
+    foundPrime: (digits: number, tests: number) => `Found a ${digits.toLocaleString()}-digit probable-prime candidate after ${tests.toLocaleString()} MR tests. It is not proven and may still be composite.`,
     reachedLimit: "Reached the search limit. Try another range with Search again.",
     cancelledMessage: "Prime search stopped.",
     workerError: "The worker encountered an error.",
     copied: (label: string) => `Copied ${label} to the clipboard.`,
-    plainPrime: "unwrapped prime",
-    wrappedPrime: "wrapped prime",
-    pngSaved: "Saved the prime digit PNG.",
+    plainPrime: "unwrapped probable prime",
+    wrappedPrime: "wrapped probable prime",
+    pngSaved: "Saved the probable-prime digit PNG.",
     gridPlaceholder: "The digit grid will appear after generation.",
-    resultPlaceholder: (digits: number) => `When a prime is found, the unwrapped ${digits.toLocaleString()}-digit integer appears here.`,
-    wrappedPlaceholder: "The same prime wrapped to the digit grid width.",
+    resultPlaceholder: (digits: number) => `When a probable prime is found, the unwrapped ${digits.toLocaleString()}-digit integer appears here.`,
+    wrappedPlaceholder: "The same candidate wrapped to the digit grid width.",
     mr: "Miller-Rabin",
     suffix: "Suffix",
     digits: "Digits",
   },
   zh: {
     appTitle: "PrimePortrait Maker",
-    title: `把图像变成${TOTAL_DIGITS_LABEL}位素数肖像`,
+    title: `把图像变成${TOTAL_DIGITS_LABEL}位概率素数肖像`,
     subtitle: `先把照片裁成正方形，再转换成${GRID_WIDTH}x${GRID_HEIGHT}数字网格，复制粘贴后也尽量接近正方形。`,
     language: "语言",
     auto: "自动",
@@ -199,9 +233,26 @@ const translations = {
     outputTitle: "数字肖像",
     outputMeta: "数字明暗: 0-9",
     howItWorksTitle: "工作原理",
-    howItWorksBody: `图片会在此浏览器内裁剪为正方形，然后把${GRID_WIDTH}x${GRID_HEIGHT}个亮度采样映射为数字。首位会强制为非0以保持位数。素数搜索会固定高位数字，只改变最后${SUFFIX_DIGITS}位。`,
-    localProcessingTitle: "本地处理",
-    localProcessingBody: "图像处理和素数判定都在这台设备的浏览器中运行，而不是服务器上。3,840位时，普通素数平均大约需要数千个候选后缀；Gaussian Prime模式大约是其两倍。实际时间取决于CPU、浏览器、其他本地负载、生成的数字串以及搜索运气。",
+    howItWorksBody: `图片会在此浏览器内裁剪为正方形，然后把${GRID_WIDTH}x${GRID_HEIGHT}个亮度采样映射为数字。首位会强制为非0以保持位数。搜索会固定高位数字，只改变最后${SUFFIX_DIGITS}位。结果不是已证明的素数，而是通过Miller-Rabin测试的概率素数候选，仍有可能不是素数。`,
+    localProcessingTitle: "素数搜索原理",
+    localProcessingBody: `高位数字固定，只改变最后${SUFFIX_DIGITS}位来寻找素数候选。搜索在本机浏览器内运行。`,
+    moreDetails: "详细说明",
+    close: "关闭",
+    primeDetailTitle: "素数搜索的详细原理",
+    primeDetailIntro: "数字肖像会被连成一个无换行的巨大整数。为了保持可见的肖像，高位数字固定，只替换末尾数字，直到找到素数候选。",
+    primeDetailSteps: [
+      "数字网格会被连成一个十进制字符串，并用浏览器BigInt处理。",
+      `高位数字固定，只改变最后${SUFFIX_DIGITS}位。`,
+      "起点是原始后缀加上随机seed。重新搜索会尝试另一个范围。",
+      "偶数或5结尾的候选会立即跳过。",
+      "先筛掉能被997以下小素数整除的候选。",
+      "剩下的候选才用Miller-Rabin测试。当前基数为2、3、5、7。",
+      "Miller-Rabin是概率判定：未通过的候选一定是合数，通过的候选是强概率素数，并不是形式化证明过的素数，仍有可能不是素数。",
+      "Gaussian Prime模式还要求 n mod 4 = 3。",
+    ],
+    primeDetailEstimate: "对于随机的3,840位整数，普通素数平均大约每数千个有效候选出现一次。Gaussian Prime只接受其中约一半，因此候选数量大约会翻倍。",
+    primeDetailLocal: "图像处理和素数判定不会发送到服务器，全部在本机浏览器内运行。实际时间取决于CPU、浏览器、其他本地负载、生成的数字串和搜索运气。",
+    probablePrimeWarning: "注意：结果是Miller-Rabin概率素数候选，不是已证明的素数，仍有可能不是素数。",
     fileMeta: "输入图像",
     noCrop: "选择图片后会显示裁剪。",
     cropRatio: "正方形裁剪",
@@ -210,9 +261,9 @@ const translations = {
     statusStrip: "搜索状态",
     attemptCount: "试行次数",
     currentSuffix: "当前后缀",
-    noPrimeYet: "找到素数后可复制并保存PNG。",
-    primeUnwrapped: "素数（无换行）",
-    primeWrapped: "素数（有换行）",
+    noPrimeYet: "找到概率素数候选后可复制并保存PNG。",
+    primeUnwrapped: "概率素数候选（无换行）",
+    primeWrapped: "概率素数候选（有换行）",
     upload: "上传图片",
     crop: "裁剪",
     cropPosition: "裁剪位置",
@@ -231,7 +282,7 @@ const translations = {
     result: "生成的巨大整数",
     copyPlain: "复制无换行",
     copyWrapped: "复制有换行",
-    savePng: "保存素数PNG",
+    savePng: "保存候选PNG",
     waiting: "待机",
     running: "搜索中",
     found: "已找到",
@@ -243,21 +294,21 @@ const translations = {
     generating: "正在从裁剪区域生成数字肖像。",
     generated: (width: number, height: number, digits: number) => `已生成${width}x${height}，共${digits.toLocaleString()}位的数字肖像。`,
     searchingGaussian: "正在按Gaussian Prime条件搜索。",
-    searchingPrime: "正在搜索素数。",
+    searchingPrime: "正在搜索概率素数候选。",
     preparing: "准备中：正在初始化小素数筛。",
     progress: (suffix: string, tests: number) => `搜索中: suffix ${suffix} / MR ${tests.toLocaleString()}次`,
-    foundGaussian: (digits: number, tests: number) => `找到${digits.toLocaleString()}位Gaussian Prime候选，MR测试${tests.toLocaleString()}次。`,
-    foundPrime: (digits: number, tests: number) => `找到${digits.toLocaleString()}位素数候选，MR测试${tests.toLocaleString()}次。`,
+    foundGaussian: (digits: number, tests: number) => `找到${digits.toLocaleString()}位Gaussian Prime候选，MR测试${tests.toLocaleString()}次。它不是已证明的素数，仍有可能不是素数。`,
+    foundPrime: (digits: number, tests: number) => `找到${digits.toLocaleString()}位概率素数候选，MR测试${tests.toLocaleString()}次。它不是已证明的素数，仍有可能不是素数。`,
     reachedLimit: "已达到搜索上限。可重新搜索其他候选范围。",
     cancelledMessage: "已停止素数搜索。",
     workerError: "Worker发生错误。",
     copied: (label: string) => `已复制${label}。`,
-    plainPrime: "无换行巨大素数",
-    wrappedPrime: "有换行巨大素数",
-    pngSaved: "已保存素数数字PNG。",
+    plainPrime: "无换行巨大概率素数候选",
+    wrappedPrime: "有换行巨大概率素数候选",
+    pngSaved: "已保存概率素数候选数字PNG。",
     gridPlaceholder: "生成后会显示数字网格。",
-    resultPlaceholder: (digits: number) => `找到素数后，无换行的${digits.toLocaleString()}位整数会显示在这里。`,
-    wrappedPlaceholder: "同一个素数，按数字网格宽度换行显示。",
+    resultPlaceholder: (digits: number) => `找到概率素数候选后，无换行的${digits.toLocaleString()}位整数会显示在这里。`,
+    wrappedPlaceholder: "同一个候选，按数字网格宽度换行显示。",
     mr: "Miller-Rabin",
     suffix: "Suffix",
     digits: "Digits",
@@ -283,6 +334,7 @@ export default function Home() {
   const [prime, setPrime] = useState("");
   const [message, setMessage] = useState("");
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 9_000_000));
+  const [showPrimeDetails, setShowPrimeDetails] = useState(false);
 
   const locale = useMemo(() => resolveLocale(localeOption, autoLocale), [autoLocale, localeOption]);
   const t = translations[locale];
@@ -512,7 +564,7 @@ export default function Home() {
 
           <section className="relative rounded-lg border border-white/10 bg-zinc-950/75 shadow-2xl shadow-black/30 backdrop-blur">
             <WorkflowBlock index={1} title={t.stepImage} active={!sourceFile}>
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
                 <label className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-md border border-teal-300/50 bg-teal-300/10 px-3 text-sm font-semibold text-teal-100 transition hover:bg-teal-300/20">
                   <span>{t.upload}</span>
                   <input
@@ -610,7 +662,13 @@ export default function Home() {
               <div className="grid gap-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs font-medium text-stone-400">{t.searchControls}</span>
-                  <HelpButton title={t.localProcessingTitle} body={t.localProcessingBody} align="right" />
+                  <HelpButton
+                    title={t.localProcessingTitle}
+                    body={t.localProcessingBody}
+                    align="right"
+                    detailsLabel={t.moreDetails}
+                    onDetails={() => setShowPrimeDetails(true)}
+                  />
                 </div>
                 <ToggleRow
                   label={t.gaussian}
@@ -669,6 +727,7 @@ export default function Home() {
               {prime ? (
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px]">
                   <div className="grid gap-3">
+                    <p className="rounded-md border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100">{t.probablePrimeWarning}</p>
                     <ResultField label={t.primeUnwrapped} value={prime} placeholder={t.resultPlaceholder(TOTAL_DIGITS)} />
                     <ResultField label={t.primeWrapped} value={wrappedPrime} placeholder={t.wrappedPlaceholder} />
                   </div>
@@ -714,6 +773,17 @@ export default function Home() {
           t={t}
         />
       </div>
+      {showPrimeDetails ? (
+        <PrimeDetailsModal
+          title={t.primeDetailTitle}
+          intro={t.primeDetailIntro}
+          steps={t.primeDetailSteps}
+          estimate={t.primeDetailEstimate}
+          localNote={t.primeDetailLocal}
+          closeLabel={t.close}
+          onClose={() => setShowPrimeDetails(false)}
+        />
+      ) : null}
     </main>
   );
 }
@@ -731,10 +801,14 @@ function HelpButton({
   title,
   body,
   align = "left",
+  detailsLabel,
+  onDetails,
 }: {
   title: string;
   body: string;
   align?: "left" | "right";
+  detailsLabel?: string;
+  onDetails?: () => void;
 }) {
   return (
     <details className="group relative z-50 inline-block">
@@ -748,8 +822,70 @@ function HelpButton({
       >
         <p className="text-sm font-semibold text-stone-100">{title}</p>
         <p className="mt-2 text-xs leading-5 text-stone-400">{body}</p>
+        {detailsLabel && onDetails ? (
+          <button
+            type="button"
+            onClick={onDetails}
+            className="mt-3 min-h-8 rounded-md border border-teal-300/40 px-3 text-xs font-semibold text-teal-100 transition hover:border-teal-300 hover:bg-teal-300/10"
+          >
+            {detailsLabel}
+          </button>
+        ) : null}
       </div>
     </details>
+  );
+}
+
+function PrimeDetailsModal({
+  title,
+  intro,
+  steps,
+  estimate,
+  localNote,
+  closeLabel,
+  onClose,
+}: {
+  title: string;
+  intro: string;
+  steps: readonly string[];
+  estimate: string;
+  localNote: string;
+  closeLabel: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/70 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="prime-details-title">
+      <div className="max-h-[85vh] w-full max-w-2xl overflow-auto rounded-lg border border-teal-300/25 bg-zinc-950 p-5 shadow-2xl shadow-black/60">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-teal-300">Prime Search</p>
+            <h2 id="prime-details-title" className="mt-1 text-lg font-semibold text-stone-50">
+              {title}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-9 rounded-md border border-white/10 px-3 text-xs font-semibold text-stone-200 transition hover:border-teal-300/70"
+          >
+            {closeLabel}
+          </button>
+        </div>
+        <p className="mt-4 text-sm leading-6 text-stone-300">{intro}</p>
+        <ol className="mt-4 grid gap-2">
+          {steps.map((step, index) => (
+            <li key={step} className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm leading-6 text-stone-300">
+              <span className="font-mono text-xs text-teal-300">{index + 1}</span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <p className="rounded-md border border-amber-300/20 bg-amber-300/5 px-3 py-3 text-xs leading-5 text-amber-100">{estimate}</p>
+          <p className="rounded-md border border-teal-300/20 bg-teal-300/5 px-3 py-3 text-xs leading-5 text-teal-100">{localNote}</p>
+        </div>
+      </div>
+    </div>
   );
 }
 
