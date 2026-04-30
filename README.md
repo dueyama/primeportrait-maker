@@ -6,9 +6,11 @@ PrimePortrait Maker runs entirely in the browser: image processing, Miller-Rabin
 ## Features
 
 - Upload JPG/PNG images
-- Square crop workflow with horizontal/vertical focus controls
+- Square crop workflow with horizontal/vertical focus and zoom controls
 - Convert the crop into an `80x48` digit grid, for a `3,840` digit integer
 - Grayscale conversion, luminance normalization, 0-9 quantization, and Floyd-Steinberg style dithering
+- Plain-text digit art mode that maps brightness to digit glyph density instead of numeric order
+- The first digit is forced to be non-zero so the generated integer keeps its full digit count
 - Browser `BigInt` prime search in a Web Worker
 - Only the final `16` digits are varied, so the portrait stays visually stable
 - Normal prime and Gaussian Prime mode (`n mod 4 = 3`)
@@ -81,5 +83,5 @@ Prime search time depends heavily on the browser, CPU, selected image, and luck.
 
 - This is an experimental math-art tool, not a cryptographic prime generator.
 - Miller-Rabin is used as a probabilistic primality test.
+- Image processing and prime search run on the local machine in the browser, so performance depends on the user's CPU, browser, and current system load.
 - Uploaded images stay local in the browser and are not sent to a server by this app.
-

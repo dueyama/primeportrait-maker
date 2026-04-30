@@ -9,6 +9,7 @@ import {
   renderDigitGridPng,
   type CropFocus,
   type DigitArtResult,
+  type DigitMappingMode,
 } from "@/lib/imageArt";
 
 type SearchStatus = "idle" | "running" | "found" | "not_found" | "cancelled" | "error";
@@ -41,6 +42,10 @@ const translations = {
     stepPrime: "素数探索",
     outputTitle: "デジタルポートレート",
     outputMeta: "数字の濃淡: 0-9",
+    howItWorksTitle: "仕組み",
+    howItWorksBody: `画像はこのブラウザ内で正方形に切り抜き、${GRID_WIDTH}x${GRID_HEIGHT}個の明度を数字に変換します。先頭は桁数維持のため必ず0以外にし、素数探索では上位桁を固定して最後の${SUFFIX_DIGITS}桁だけを変えます。`,
+    localProcessingTitle: "ローカル処理",
+    localProcessingBody: "画像処理と素数判定はサーバーではなく、この端末のブラウザ上で実行します。3,840桁では通常素数なら数千候補、Gaussian Primeならその約2倍の候補が目安です。実時間はCPU、ブラウザ、ほかのアプリの負荷、生成された数字列、探索の運によって変わります。",
     fileMeta: "入力画像",
     noCrop: "画像を選択すると切り抜きが表示されます。",
     cropRatio: "正方形切り抜き",
@@ -57,11 +62,12 @@ const translations = {
     cropPosition: "切り抜き位置",
     horizontal: "左右",
     vertical: "上下",
+    zoom: "拡大",
     generateCrop: "この切り抜きで数値化",
     gaussian: "Gaussian Prime",
     gaussianHelp: "ONの場合、通常の素数に加えて n mod 4 = 3 を要求します。",
     digitTone: "数字の濃淡",
-    digitToneHelp: "ONでは画面表示と素数PNGで0を暗く、9を明るく描画します。コピー内容は数字だけです。",
+    digitToneHelp: "ONでは0〜9の数値順に色で濃淡を出します。OFFでは単色表示でも崩れにくいよう、数字の字形密度順で再生成します。",
     start: "素数探索を開始",
     stop: "停止",
     retry: "再探索",
@@ -114,6 +120,10 @@ const translations = {
     stepPrime: "Prime search",
     outputTitle: "Digital portrait",
     outputMeta: "Digit tone: 0-9",
+    howItWorksTitle: "How it works",
+    howItWorksBody: `The image is cropped to a square in this browser, then ${GRID_WIDTH}x${GRID_HEIGHT} luminance samples are mapped to digits. The first digit is forced to be non-zero to preserve the digit count. Prime search keeps the upper digits fixed and varies only the final ${SUFFIX_DIGITS} digits.`,
+    localProcessingTitle: "Local processing",
+    localProcessingBody: "Image processing and primality checks run in this browser, not on a server. At 3,840 digits, a normal prime usually takes a few thousand candidate suffixes on average; Gaussian Prime mode is roughly twice that. Wall-clock time depends on your CPU, browser, other local workload, the generated digit string, and search luck.",
     fileMeta: "Input image",
     noCrop: "Choose an image to show the crop.",
     cropRatio: "Square crop",
@@ -130,11 +140,12 @@ const translations = {
     cropPosition: "Crop position",
     horizontal: "Horizontal",
     vertical: "Vertical",
+    zoom: "Zoom",
     generateCrop: "Generate from this crop",
     gaussian: "Gaussian Prime",
     gaussianHelp: "When on, the result must also satisfy n mod 4 = 3.",
     digitTone: "Digit tone",
-    digitToneHelp: "When on, 0 is dark and 9 is bright in the grid and prime PNG. Copy output remains digits only.",
+    digitToneHelp: "When on, digits use numeric 0-9 mapping plus color tone. When off, the grid is regenerated with a glyph-density digit order for stronger plain-text ASCII art.",
     start: "Start prime search",
     stop: "Stop",
     retry: "Search again",
@@ -187,6 +198,10 @@ const translations = {
     stepPrime: "素数搜索",
     outputTitle: "数字肖像",
     outputMeta: "数字明暗: 0-9",
+    howItWorksTitle: "工作原理",
+    howItWorksBody: `图片会在此浏览器内裁剪为正方形，然后把${GRID_WIDTH}x${GRID_HEIGHT}个亮度采样映射为数字。首位会强制为非0以保持位数。素数搜索会固定高位数字，只改变最后${SUFFIX_DIGITS}位。`,
+    localProcessingTitle: "本地处理",
+    localProcessingBody: "图像处理和素数判定都在这台设备的浏览器中运行，而不是服务器上。3,840位时，普通素数平均大约需要数千个候选后缀；Gaussian Prime模式大约是其两倍。实际时间取决于CPU、浏览器、其他本地负载、生成的数字串以及搜索运气。",
     fileMeta: "输入图像",
     noCrop: "选择图片后会显示裁剪。",
     cropRatio: "正方形裁剪",
@@ -203,11 +218,12 @@ const translations = {
     cropPosition: "裁剪位置",
     horizontal: "左右",
     vertical: "上下",
+    zoom: "缩放",
     generateCrop: "用此裁剪生成",
     gaussian: "Gaussian Prime",
     gaussianHelp: "开启时，除了是素数，还要求 n mod 4 = 3。",
     digitTone: "数字明暗",
-    digitToneHelp: "开启时，0较暗、9较亮。复制内容仍然只是数字。",
+    digitToneHelp: "开启时使用0〜9数值顺序并用颜色表现明暗。关闭时会按数字字形密度重新生成，单色文本更接近ASCII图。",
     start: "开始素数搜索",
     stop: "停止",
     retry: "重新搜索",
@@ -254,7 +270,7 @@ export default function Home() {
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [sourceUrl, setSourceUrl] = useState("");
   const [fileName, setFileName] = useState("");
-  const [cropFocus, setCropFocus] = useState<CropFocus>({ x: 0.5, y: 0.5 });
+  const [cropFocus, setCropFocus] = useState<CropFocus>({ x: 0.5, y: 0.5, zoom: 1 });
   const [localeOption, setLocaleOption] = useState<LocaleOption>("auto");
   const [autoLocale, setAutoLocale] = useState<Locale>("ja");
   const [gaussian, setGaussian] = useState(false);
@@ -300,7 +316,7 @@ export default function Home() {
     setAttempts(0);
     setProbablePrimeTests(0);
     setFileName(file.name);
-    setCropFocus({ x: 0.5, y: 0.5 });
+    setCropFocus({ x: 0.5, y: 0.5, zoom: 1 });
     setSourceFile(file);
     setSourceUrl((current) => {
       if (current) {
@@ -309,15 +325,17 @@ export default function Home() {
       return URL.createObjectURL(file);
     });
 
-    await generateDigitArt(file, { x: 0.5, y: 0.5 });
+    await generateDigitArt(file, { x: 0.5, y: 0.5, zoom: 1 }, digitTone);
   }
 
-  async function generateDigitArt(file = sourceFile, focus = cropFocus): Promise<void> {
+  async function generateDigitArt(file = sourceFile, focus = cropFocus, tone = digitTone): Promise<void> {
     if (!file) {
       setMessage(t.pickImageFirst);
       return;
     }
 
+    workerRef.current?.terminate();
+    workerRef.current = null;
     setStatus("idle");
     setPrime("");
     setProgress(0);
@@ -327,12 +345,21 @@ export default function Home() {
     setMessage(t.generating);
 
     try {
-      const result = await imageFileToDigitArt(file, focus);
+      const result = await imageFileToDigitArt(file, focus, mappingModeForTone(tone));
       setArt(result);
       setMessage(t.generated(GRID_WIDTH, GRID_HEIGHT, result.flatDigits.length));
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : t.error);
+    }
+  }
+
+  async function handleDigitToneToggle(): Promise<void> {
+    const nextTone = !digitTone;
+    setDigitTone(nextTone);
+
+    if (sourceFile) {
+      await generateDigitArt(sourceFile, cropFocus, nextTone);
     }
   }
 
@@ -460,18 +487,21 @@ export default function Home() {
   return (
     <main className="min-h-screen px-3 py-3 text-stone-100 sm:px-5 lg:px-6">
       <div className="mx-auto flex max-w-[1540px] flex-col gap-3">
-        <header className="flex flex-col gap-3 rounded-lg border border-white/10 bg-zinc-950/70 px-3 py-3 shadow-2xl shadow-black/25 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <header className="relative z-40 flex flex-col gap-3 rounded-lg border border-white/10 bg-zinc-950/70 px-3 py-3 shadow-2xl shadow-black/25 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-8 w-8 shrink-0 place-items-center rounded border border-teal-300/50 bg-teal-300/10 font-mono text-lg text-teal-200">P</div>
             <div className="min-w-0">
-              <p className="font-mono text-base font-semibold tracking-wide text-stone-50 sm:text-lg">{t.appTitle}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-mono text-base font-semibold tracking-wide text-stone-50 sm:text-lg">{t.appTitle}</p>
+                <HelpButton title={t.howItWorksTitle} body={t.howItWorksBody} />
+              </div>
               <h1 className="truncate text-sm leading-5 text-stone-400">{t.title}</h1>
             </div>
           </div>
           <LanguageSwitch localeOption={localeOption} setLocaleOption={setLocaleOption} t={t} />
         </header>
 
-        <div className="grid gap-3 lg:grid-cols-[76px_470px_minmax(0,1fr)] 2xl:grid-cols-[84px_500px_minmax(0,1fr)]">
+        <div className="relative z-10 grid gap-3 lg:grid-cols-[76px_470px_minmax(0,1fr)] 2xl:grid-cols-[84px_500px_minmax(0,1fr)]">
           <StepRail
             steps={[
               { index: 1, label: t.stepImage, complete: Boolean(sourceFile), active: !sourceFile },
@@ -480,7 +510,7 @@ export default function Home() {
             ]}
           />
 
-          <section className="overflow-hidden rounded-lg border border-white/10 bg-zinc-950/75 shadow-2xl shadow-black/30 backdrop-blur">
+          <section className="relative rounded-lg border border-white/10 bg-zinc-950/75 shadow-2xl shadow-black/30 backdrop-blur">
             <WorkflowBlock index={1} title={t.stepImage} active={!sourceFile}>
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
                 <label className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-md border border-teal-300/50 bg-teal-300/10 px-3 text-sm font-semibold text-teal-100 transition hover:bg-teal-300/20">
@@ -503,10 +533,14 @@ export default function Home() {
                   {sourceUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-150"
                       src={sourceUrl}
                       alt="Crop preview"
-                      style={{ objectPosition: `${cropFocus.x * 100}% ${cropFocus.y * 100}%` }}
+                      style={{
+                        objectPosition: `${cropFocus.x * 100}% ${cropFocus.y * 100}%`,
+                        transform: `scale(${cropFocus.zoom})`,
+                        transformOrigin: `${cropFocus.x * 100}% ${cropFocus.y * 100}%`,
+                      }}
                     />
                   ) : (
                     <div className="grid h-full place-items-center px-5 text-center text-sm text-stone-500">{t.noCrop}</div>
@@ -531,6 +565,14 @@ export default function Home() {
                     value={Math.round(cropFocus.y * 100)}
                     disabled={!sourceUrl || status === "running"}
                     onChange={(value) => setCropFocus((focus) => ({ ...focus, y: value / 100 }))}
+                  />
+                  <RangeControl
+                    label={t.zoom}
+                    value={Math.round(cropFocus.zoom * 100)}
+                    min={100}
+                    max={300}
+                    disabled={!sourceUrl || status === "running"}
+                    onChange={(value) => setCropFocus((focus) => ({ ...focus, zoom: value / 100 }))}
                   />
                   <button
                     type="button"
@@ -559,13 +601,17 @@ export default function Home() {
                   help={t.digitToneHelp}
                   enabled={digitTone}
                   tone="amber"
-                  onToggle={() => setDigitTone((value) => !value)}
+                  onToggle={() => void handleDigitToneToggle()}
                 />
               </div>
             </WorkflowBlock>
 
             <WorkflowBlock index={3} title={t.stepPrime} active={Boolean(art)}>
               <div className="grid gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-medium text-stone-400">{t.searchControls}</span>
+                  <HelpButton title={t.localProcessingTitle} body={t.localProcessingBody} align="right" />
+                </div>
                 <ToggleRow
                   label={t.gaussian}
                   help={t.gaussianHelp}
@@ -603,7 +649,7 @@ export default function Home() {
             </WorkflowBlock>
           </section>
 
-          <section className="min-w-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-950/75 shadow-2xl shadow-black/30 backdrop-blur">
+          <section className="relative min-w-0 rounded-lg border border-white/10 bg-zinc-950/75 shadow-2xl shadow-black/30 backdrop-blur">
             <div className="flex flex-col gap-2 border-b border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-stone-50">{t.outputTitle} <span className="font-mono text-sm text-stone-500">({GRID_WIDTH}x{GRID_HEIGHT})</span></h2>
@@ -678,6 +724,32 @@ function Metric({ label, value }: { label: string; value: string }) {
       <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-stone-500">{label}</dt>
       <dd className="mt-1 text-sm font-semibold text-stone-100">{value}</dd>
     </div>
+  );
+}
+
+function HelpButton({
+  title,
+  body,
+  align = "left",
+}: {
+  title: string;
+  body: string;
+  align?: "left" | "right";
+}) {
+  return (
+    <details className="group relative z-50 inline-block">
+      <summary className="help-trigger grid h-6 w-6 cursor-pointer place-items-center rounded-full border border-white/15 bg-black/30 text-xs font-semibold text-stone-300 transition hover:border-teal-300/70 hover:text-teal-100">
+        ?
+      </summary>
+      <div
+        className={`absolute z-50 mt-2 w-72 rounded-md border border-teal-300/30 bg-zinc-950 p-3 text-left shadow-2xl shadow-black/50 ${
+          align === "right" ? "right-0" : "left-0"
+        }`}
+      >
+        <p className="text-sm font-semibold text-stone-100">{title}</p>
+        <p className="mt-2 text-xs leading-5 text-stone-400">{body}</p>
+      </div>
+    </details>
   );
 }
 
@@ -775,11 +847,15 @@ function ToggleRow({
 function RangeControl({
   label,
   value,
+  min = 0,
+  max = 100,
   disabled,
   onChange,
 }: {
   label: string;
   value: number;
+  min?: number;
+  max?: number;
   disabled: boolean;
   onChange: (value: number) => void;
 }) {
@@ -792,8 +868,8 @@ function RangeControl({
       <input
         className="mt-2 w-full accent-teal-300 disabled:opacity-40"
         type="range"
-        min="0"
-        max="100"
+        min={min}
+        max={max}
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
@@ -968,6 +1044,10 @@ function digitColor(digit: string): string {
     return "#fef3c7";
   }
   return `hsl(42 72% ${18 + value * 7}%)`;
+}
+
+function mappingModeForTone(tone: boolean): DigitMappingMode {
+  return tone ? "value" : "glyph-density";
 }
 
 function resolveLocale(option: LocaleOption, autoLocale: Locale): Locale {

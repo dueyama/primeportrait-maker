@@ -52,3 +52,11 @@ textarea {
 .digit-grid::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.18);
 }
+
+.help-trigger {
+  list-style: none;
+}
+
+.help-trigger::-webkit-details-marker {
+  display: none;
+}
