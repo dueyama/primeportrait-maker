@@ -12,7 +12,7 @@ import {
 } from "@/lib/imageArt";
 
 type SearchStatus = "idle" | "running" | "found" | "not_found" | "cancelled" | "error";
-type LocaleOption = "auto" | "ja" | "en" | "zh";
+type LocaleOption = "auto" | "ja" | "en" | "fr" | "zh";
 type Locale = Exclude<LocaleOption, "auto">;
 
 type WorkerMessage =
@@ -222,6 +222,104 @@ const translations = {
     mr: "Miller-Rabin",
     suffix: "Suffix",
     digits: "Digits",
+  },
+  fr: {
+    appTitle: "PrimePortrait Maker",
+    title: `Transformer une image en portrait de ${TOTAL_DIGITS_LABEL} chiffres probablement premier`,
+    subtitle: `Recadrez une photo en carré et convertissez-la en grille de chiffres ${GRID_WIDTH}x${GRID_HEIGHT}, qui reste presque carrée une fois collée comme texte.`,
+    language: "Langue",
+    auto: "Auto",
+    japanese: "Japonais",
+    english: "Anglais",
+    chinese: "Chinois",
+    stepImage: "Image",
+    stepDigits: "Chiffres",
+    stepPrime: "Recherche de premier",
+    outputTitle: "Portrait numérique",
+    outputMeta: "Tonalité des chiffres : 0-9",
+    howItWorksTitle: "Fonctionnement",
+    howItWorksBody: `L'image est recadrée en carré dans ce navigateur, puis ${GRID_WIDTH}x${GRID_HEIGHT} échantillons de luminance sont convertis en chiffres. Le premier chiffre est forcé à être non nul pour conserver le nombre de chiffres. La recherche garde les chiffres de tête fixes et ne varie que les ${SUFFIX_DIGITS} derniers chiffres. Le résultat n'est pas un nombre premier prouvé : c'est un candidat probablement premier ayant passé Miller-Rabin et strong Lucas, et il peut encore être composé.`,
+    localProcessingTitle: "Fonctionnement de la recherche",
+    localProcessingBody: `Les chiffres de tête restent fixes et seuls les ${SUFFIX_DIGITS} derniers chiffres varient. La recherche s'exécute localement dans ce navigateur.`,
+    moreDetails: "Détails",
+    close: "Fermer",
+    primeDetailTitle: "Détails de la recherche de premier",
+    primeDetailIntro: "Le portrait de chiffres est concaténé en un très grand entier sans retour à la ligne. Pour préserver le portrait visible, les chiffres importants de tête restent fixes, et seul le suffixe est remplacé jusqu'à trouver un candidat premier.",
+    primeDetailSteps: [
+      "La grille de chiffres est concaténée en une chaîne décimale et traitée avec BigInt dans le navigateur.",
+      `Les chiffres de tête restent fixes, et seuls les ${SUFFIX_DIGITS} derniers chiffres changent.`,
+      "Le point de départ est le suffixe original augmenté d'une graine aléatoire. Une nouvelle recherche essaie une autre zone.",
+      "Les candidats finissant par un chiffre pair ou par 5 sont ignorés immédiatement.",
+      "Les candidats divisibles par les petits nombres premiers jusqu'à 997 sont filtrés avant les tests coûteux.",
+      "Seuls les survivants sont testés avec Miller-Rabin. Les bases actuelles sont 2, 3, 5 et 7.",
+      "Les candidats qui passent Miller-Rabin sont ensuite testés avec un strong Lucas probable prime test de type Selfridge.",
+      "Miller-Rabin et Lucas sont probabilistes : un candidat rejeté est certainement composé, mais un candidat accepté reste un fort probable premier, pas une preuve formelle de primalité. Il peut encore être composé.",
+      "Le mode Gaussian Prime exige aussi n mod 4 = 3.",
+    ],
+    primeDetailEstimate: "Pour un entier aléatoire de 3 840 chiffres, on s'attend en général à trouver un nombre premier après quelques milliers de candidats plausibles. Gaussian Prime n'accepte qu'environ la moitié de ces premiers, donc il peut falloir environ deux fois plus de candidats.",
+    primeDetailLocal: "Le traitement de l'image et les tests de primalité ne sont pas envoyés à un serveur. Ils s'exécutent dans ce navigateur ; le temps réel dépend du processeur, du navigateur, de la charge locale, de la chaîne générée et de la chance de recherche.",
+    probablePrimeWarning: "Attention : les résultats sont des candidats probablement premiers selon Miller-Rabin et strong Lucas. Ce ne sont pas des nombres premiers prouvés et ils peuvent encore être composés.",
+    fileMeta: "Image d'entrée",
+    noCrop: "Choisissez une image pour afficher le recadrage.",
+    cropRatio: "Recadrage carré",
+    fixedResolution: "Résolution fixe",
+    searchControls: "Paramètres de recherche",
+    statusStrip: "État de la recherche",
+    attemptCount: "Tentatives",
+    currentSuffix: "Suffixe actuel",
+    noPrimeYet: "Les actions de copie et d'enregistrement PNG apparaissent après la découverte d'un candidat probablement premier.",
+    primeUnwrapped: "Probable premier, sans retour",
+    primeWrapped: "Probable premier, avec retours",
+    upload: "Importer une image",
+    crop: "Recadrage",
+    cropPosition: "Position du recadrage",
+    horizontal: "Horizontal",
+    vertical: "Vertical",
+    zoom: "Zoom",
+    generateCrop: "Générer depuis ce recadrage",
+    gaussian: "Gaussian Prime",
+    gaussianHelp: "Si activé, le résultat doit aussi satisfaire n mod 4 = 3.",
+    digitTone: "Tonalité",
+    digitToneHelp: "Si activé, la tonalité de couleur vient de l'image source et reste fixe même si les chiffres du suffixe changent. La désactivation ne change que l'affichage ; elle n'affecte ni la recherche ni la chaîne de chiffres.",
+    followDigitTone: "Suivre les chiffres",
+    followDigitToneHelp: "Si activé, les chiffres modifiés du candidat changent aussi leur tonalité. Sinon, la tonalité reste verrouillée sur l'image source.",
+    start: "Lancer la recherche",
+    stop: "Arrêter",
+    retry: "Relancer",
+    grid: "Grille de chiffres",
+    result: "Grand entier généré",
+    copyPlain: "Copier sans retour",
+    copyWrapped: "Copier avec retours",
+    savePng: "Enregistrer le PNG",
+    waiting: "En attente",
+    running: "Recherche",
+    found: "Trouvé",
+    notFound: "Non trouvé",
+    cancelled: "Arrêté",
+    error: "Erreur",
+    noImage: `Importez une image pour générer un portrait de chiffres ${GRID_WIDTH}x${GRID_HEIGHT}.`,
+    pickImageFirst: "Importez d'abord une image.",
+    generating: "Génération du portrait de chiffres depuis le recadrage.",
+    generated: (width: number, height: number, digits: number) => `Portrait de chiffres généré : ${width}x${height}, soit ${digits.toLocaleString("fr-FR")} chiffres.`,
+    searchingGaussian: "Recherche avec la condition Gaussian Prime.",
+    searchingPrime: "Recherche d'un candidat probablement premier.",
+    preparing: "Préparation : initialisation du crible de petits nombres premiers.",
+    progress: (suffix: string, tests: number) => `Recherche : suffix ${suffix} / ${tests.toLocaleString("fr-FR")} tests MR`,
+    foundGaussian: (digits: number, tests: number) => `Candidat Gaussian Prime de ${digits.toLocaleString("fr-FR")} chiffres trouvé après ${tests.toLocaleString("fr-FR")} tests MR et un post-contrôle Lucas. Il n'est pas prouvé et peut encore être composé.`,
+    foundPrime: (digits: number, tests: number) => `Candidat probablement premier de ${digits.toLocaleString("fr-FR")} chiffres trouvé après ${tests.toLocaleString("fr-FR")} tests MR et un post-contrôle Lucas. Il n'est pas prouvé et peut encore être composé.`,
+    reachedLimit: "Limite de recherche atteinte. Relancez pour essayer une autre plage de candidats.",
+    cancelledMessage: "Recherche de premier arrêtée.",
+    workerError: "Le worker a rencontré une erreur.",
+    copied: (label: string) => `${label} copié dans le presse-papiers.`,
+    plainPrime: "probable premier géant sans retour",
+    wrappedPrime: "probable premier géant avec retours",
+    pngSaved: "PNG du candidat probablement premier enregistré.",
+    gridPlaceholder: "La grille de chiffres apparaîtra après génération.",
+    resultPlaceholder: (digits: number) => `Lorsqu'un candidat probablement premier est trouvé, l'entier de ${digits.toLocaleString("fr-FR")} chiffres sans retour apparaît ici.`,
+    wrappedPlaceholder: "Le même candidat, avec retours à la largeur de la grille.",
+    mr: "Miller-Rabin",
+    suffix: "Suffixe",
+    digits: "Chiffres",
   },
   zh: {
     appTitle: "PrimePortrait Maker",
@@ -1153,13 +1251,14 @@ function LanguageSwitch({
     { value: "auto", label: t.auto },
     { value: "ja", label: "日本語" },
     { value: "en", label: "EN" },
+    { value: "fr", label: "FR" },
     { value: "zh", label: "中文" },
   ];
 
   return (
     <div className="w-full shrink-0 sm:w-auto">
       <div className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-stone-500 sm:text-right">{t.language}</div>
-      <div className="grid grid-cols-4 overflow-hidden rounded-md border border-white/10 bg-black/30 sm:flex">
+      <div className="grid grid-cols-5 overflow-hidden rounded-md border border-white/10 bg-black/30 sm:flex">
         {options.map((option) => {
           const active = localeOption === option.value;
           return (
@@ -1263,6 +1362,9 @@ function detectBrowserLocale(): Locale {
   }
   if (language.startsWith("en")) {
     return "en";
+  }
+  if (language.startsWith("fr")) {
+    return "fr";
   }
   return "ja";
 }
