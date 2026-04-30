@@ -187,7 +187,134 @@ function isProbablePrime(n) {
     }
   }
 
-  return true;
+  return isStrongLucasProbablePrime(n);
+}
+
+function isStrongLucasProbablePrime(n) {
+  if (isPerfectSquare(n)) {
+    return false;
+  }
+
+  let dParameter = 5n;
+  while (true) {
+    const jacobiValue = jacobi(dParameter, n);
+    if (jacobiValue === -1) {
+      break;
+    }
+    if (jacobiValue === 0) {
+      if (absBigInt(dParameter) === n) {
+        dParameter = dParameter > 0n ? -(dParameter + 2n) : -dParameter + 2n;
+        continue;
+      }
+      return false;
+    }
+    dParameter = dParameter > 0n ? -(dParameter + 2n) : -dParameter + 2n;
+  }
+
+  const pParameter = 1n;
+  const qParameter = (1n - dParameter) / 4n;
+  let lucasExponent = n + 1n;
+  let shiftCount = 0;
+  while (lucasExponent % 2n === 0n) {
+    lucasExponent /= 2n;
+    shiftCount += 1;
+  }
+
+  let { u, v, qPower } = lucasSequenceMod(n, pParameter, qParameter, lucasExponent);
+  if (u === 0n || v === 0n) {
+    return true;
+  }
+
+  for (let index = 1; index < shiftCount; index += 1) {
+    v = positiveBigIntMod((v * v) - (2n * qPower), n);
+    qPower = positiveBigIntMod(qPower * qPower, n);
+    if (v === 0n) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function lucasSequenceMod(modulus, pParameter, qParameter, exponent) {
+  const dParameter = (pParameter * pParameter) - (4n * qParameter);
+  let u = 0n;
+  let v = 2n;
+  let qPower = 1n;
+
+  for (const bit of exponent.toString(2)) {
+    u = positiveBigIntMod(u * v, modulus);
+    v = positiveBigIntMod((v * v) - (2n * qPower), modulus);
+    qPower = positiveBigIntMod(qPower * qPower, modulus);
+
+    if (bit === "1") {
+      const nextU = div2Mod((pParameter * u) + v, modulus);
+      const nextV = div2Mod((dParameter * u) + (pParameter * v), modulus);
+      u = nextU;
+      v = nextV;
+      qPower = positiveBigIntMod(qPower * qParameter, modulus);
+    }
+  }
+
+  return { u, v, qPower };
+}
+
+function div2Mod(value, modulus) {
+  let adjusted = value;
+  if (adjusted % 2n !== 0n) {
+    adjusted += modulus;
+  }
+  return positiveBigIntMod(adjusted / 2n, modulus);
+}
+
+function jacobi(value, modulus) {
+  let a = positiveBigIntMod(value, modulus);
+  let n = modulus;
+  let result = 1;
+
+  while (a !== 0n) {
+    while (a % 2n === 0n) {
+      a /= 2n;
+      const nMod8 = n % 8n;
+      if (nMod8 === 3n || nMod8 === 5n) {
+        result = -result;
+      }
+    }
+
+    const previousA = a;
+    a = n;
+    n = previousA;
+
+    if (a % 4n === 3n && n % 4n === 3n) {
+      result = -result;
+    }
+    a %= n;
+  }
+
+  return n === 1n ? result : 0;
+}
+
+function isPerfectSquare(value) {
+  if (value < 0n) {
+    return false;
+  }
+  if (value < 2n) {
+    return true;
+  }
+
+  const residue = value % 16n;
+  if (residue !== 0n && residue !== 1n && residue !== 4n && residue !== 9n) {
+    return false;
+  }
+
+  let root = 1n << BigInt(Math.ceil(value.toString(2).length / 2));
+  let next = (root + (value / root)) / 2n;
+  while (next < root) {
+    root = next;
+    next = (root + (value / root)) / 2n;
+  }
+
+  return root * root === value;
 }
 
 function buildPrefixTerms(prefix, suffixDigits) {
@@ -245,6 +372,15 @@ function passesSmallPrimeSieve(prefixTerms, suffixResidues) {
 function positiveMod(value, modulus) {
   const result = value % modulus;
   return result < 0 ? result + modulus : result;
+}
+
+function positiveBigIntMod(value, modulus) {
+  const result = value % modulus;
+  return result < 0n ? result + modulus : result;
+}
+
+function absBigInt(value) {
+  return value < 0n ? -value : value;
 }
 
 function makeSmallPrimes(limit) {

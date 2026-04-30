@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "PrimePortrait Maker",
-  description: "Turn an uploaded image into a digit portrait whose full decimal string is prime.",
+  description: "Turn an uploaded image into a digit portrait whose full decimal string passes probable-prime tests.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
