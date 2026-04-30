@@ -1,17 +1,22 @@
 # PrimePortrait Maker
 
-画像を100x100の数字グリッドに変換し、最後の16桁だけを変えて10,000桁の巨大素数を探すNext.jsアプリです。
+画像を100x60の数字グリッドに変換し、最後の16桁だけを変えて6,000桁の巨大素数を探すNext.jsアプリです。
 
 ## 特徴
 
 - JPG/PNGアップロード
+- 1:1切り抜き位置調整UI
 - Canvas APIによる正方形クロップ、グレースケール化、0〜9量子化、Floyd-Steinberg系ディザリング
-- ブラウザ `BigInt` + Web WorkerによるMiller-Rabin確率素数判定
+- 小素数ふるい + ブラウザ `BigInt` + Web WorkerによるMiller-Rabin確率素数判定
 - 通常素数 / Gaussian Prime `n mod 4 = 3` モード
 - 数字グリッドPNGダウンロード
-- 完成した巨大整数のコピー
+- 完成した巨大整数の改行なし/改行付きコピー
 
 ## ローカル起動
+
+Finderから起動する場合は `OpenPrimePortrait.command` をダブルクリックします。
+
+ターミナルから起動する場合:
 
 ```bash
 npm install
@@ -30,8 +35,8 @@ npm run dev
 
 ## 探索パラメータ
 
-- Grid: `100x100`
-- Total digits: `10,000`
+- Grid: `100x60`
+- Total digits: `6,000`
 - Variable suffix: `16` digits
 - Max attempts: `100,000`
 
