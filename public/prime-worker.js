@@ -1,25 +1,42 @@
-const PROGRESS_EVERY = 25;
+const PROGRESS_INTERVAL_MS = 250;
+const YIELD_INTERVAL_MS = 35;
 const SIEVE_PRIMES = makeSmallPrimes(997).filter((value) => value !== 2 && value !== 5);
 const SIEVE_PRIME_BIGINTS = SIEVE_PRIMES.map((value) => BigInt(value));
 const MILLER_RABIN_BASES = [2n, 3n, 5n, 7n];
+let activeSearch = null;
 
 self.onmessage = (event) => {
   const message = event.data;
-  if (!message || message.type !== "search") {
+  if (!message) {
     return;
   }
 
-  try {
-    searchPrime(message);
-  } catch (error) {
+  if (message.type === "cancel") {
+    if (activeSearch) {
+      activeSearch.cancelled = true;
+    }
+    return;
+  }
+
+  if (message.type !== "search") {
+    return;
+  }
+
+  const token = { cancelled: false };
+  if (activeSearch) {
+    activeSearch.cancelled = true;
+  }
+  activeSearch = token;
+
+  searchPrime(message, token).catch((error) => {
     self.postMessage({
       type: "error",
       message: error instanceof Error ? error.message : String(error),
     });
-  }
+  });
 };
 
-function searchPrime({ digits, suffixDigits, maxAttempts, gaussian, seed }) {
+async function searchPrime({ digits, suffixDigits, maxAttempts, gaussian, seed }, token) {
   if (typeof digits !== "string" || digits.length <= suffixDigits) {
     throw new Error("Digit string is too short for the requested suffix size.");
   }
@@ -38,8 +55,22 @@ function searchPrime({ digits, suffixDigits, maxAttempts, gaussian, seed }) {
   const prefixTerms = buildPrefixTerms(prefix, suffixDigits);
   const suffixResidues = buildSuffixResidues(cursor);
   let probablePrimeTests = 0;
+  let nextProgressAt = performance.now() + PROGRESS_INTERVAL_MS;
+  let nextYieldAt = performance.now() + YIELD_INTERVAL_MS;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    if (token.cancelled) {
+      self.postMessage({
+        type: "cancelled",
+        attempts: attempt - 1,
+        probablePrimeTests,
+      });
+      if (activeSearch === token) {
+        activeSearch = null;
+      }
+      return;
+    }
+
     const previous = cursor;
     cursor = nextCandidateSuffix(cursor, suffixLimit);
     updateSuffixResidues(suffixResidues, cursor - previous);
@@ -60,11 +91,15 @@ function searchPrime({ digits, suffixDigits, maxAttempts, gaussian, seed }) {
           probablePrimeTests,
           gaussian,
         });
+        if (activeSearch === token) {
+          activeSearch = null;
+        }
         return;
       }
     }
 
-    if (attempt % PROGRESS_EVERY === 0) {
+    const now = performance.now();
+    if (now >= nextProgressAt || attempt === maxAttempts) {
       self.postMessage({
         type: "progress",
         attempts: attempt,
@@ -72,6 +107,12 @@ function searchPrime({ digits, suffixDigits, maxAttempts, gaussian, seed }) {
         progress: attempt / maxAttempts,
         currentSuffix: suffix,
       });
+      nextProgressAt = now + PROGRESS_INTERVAL_MS;
+    }
+
+    if (now >= nextYieldAt) {
+      await sleep(0);
+      nextYieldAt = performance.now() + YIELD_INTERVAL_MS;
     }
   }
 
@@ -79,6 +120,13 @@ function searchPrime({ digits, suffixDigits, maxAttempts, gaussian, seed }) {
     type: "not_found",
     attempts: maxAttempts,
   });
+  if (activeSearch === token) {
+    activeSearch = null;
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function normalizeSuffix(value, limit) {

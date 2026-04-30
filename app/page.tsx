@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   GRID_HEIGHT,
   GRID_WIDTH,
@@ -11,7 +11,7 @@ import {
   type DigitArtResult,
 } from "@/lib/imageArt";
 
-type SearchStatus = "idle" | "running" | "found" | "not_found" | "error";
+type SearchStatus = "idle" | "running" | "found" | "not_found" | "cancelled" | "error";
 type LocaleOption = "auto" | "ja" | "en" | "zh";
 type Locale = Exclude<LocaleOption, "auto">;
 
@@ -19,6 +19,7 @@ type WorkerMessage =
   | { type: "progress"; attempts: number; probablePrimeTests: number; progress: number; currentSuffix: string }
   | { type: "found"; prime: string; suffix: string; digits: number; attempts: number; probablePrimeTests: number; gaussian: boolean }
   | { type: "not_found"; attempts: number }
+  | { type: "cancelled"; attempts: number; probablePrimeTests: number }
   | { type: "error"; message: string };
 
 const SUFFIX_DIGITS = 16;
@@ -45,6 +46,7 @@ const translations = {
     digitTone: "数字の濃淡",
     digitToneHelp: "ONでは画面表示と素数PNGで0を暗く、9を明るく描画します。コピー内容は数字だけです。",
     start: "素数探索を開始",
+    stop: "停止",
     retry: "再探索",
     grid: "数字グリッド",
     result: "完成した巨大整数",
@@ -55,6 +57,7 @@ const translations = {
     running: "探索中",
     found: "発見",
     notFound: "未発見",
+    cancelled: "停止済み",
     error: "エラー",
     noImage: "画像をアップロードすると、100x60の数字ポートレートを生成します。",
     pickImageFirst: "先に画像をアップロードしてください。",
@@ -67,6 +70,7 @@ const translations = {
     foundGaussian: (digits: number, tests: number) => `この数は${digits.toLocaleString()}桁のGaussian Prime候補です。MR ${tests.toLocaleString()}回で見つかりました。`,
     foundPrime: (digits: number, tests: number) => `この数は${digits.toLocaleString()}桁の素数候補です。MR ${tests.toLocaleString()}回で見つかりました。`,
     reachedLimit: "探索上限に到達しました。再探索で別の候補範囲を試せます。",
+    cancelledMessage: "素数探索を停止しました。",
     workerError: "Workerでエラーが発生しました。",
     copied: (label: string) => `${label}をクリップボードにコピーしました。`,
     plainPrime: "改行なしの巨大素数",
@@ -99,6 +103,7 @@ const translations = {
     digitTone: "Digit tone",
     digitToneHelp: "When on, 0 is dark and 9 is bright in the grid and prime PNG. Copy output remains digits only.",
     start: "Start prime search",
+    stop: "Stop",
     retry: "Search again",
     grid: "Digit grid",
     result: "Prime result",
@@ -109,6 +114,7 @@ const translations = {
     running: "Searching",
     found: "Found",
     notFound: "Not found",
+    cancelled: "Stopped",
     error: "Error",
     noImage: "Upload an image to generate a 100x60 digit portrait.",
     pickImageFirst: "Upload an image first.",
@@ -121,6 +127,7 @@ const translations = {
     foundGaussian: (digits: number, tests: number) => `Found a ${digits.toLocaleString()}-digit Gaussian Prime candidate after ${tests.toLocaleString()} MR tests.`,
     foundPrime: (digits: number, tests: number) => `Found a ${digits.toLocaleString()}-digit prime candidate after ${tests.toLocaleString()} MR tests.`,
     reachedLimit: "Reached the search limit. Try another range with Search again.",
+    cancelledMessage: "Prime search stopped.",
     workerError: "The worker encountered an error.",
     copied: (label: string) => `Copied ${label} to the clipboard.`,
     plainPrime: "unwrapped prime",
@@ -153,6 +160,7 @@ const translations = {
     digitTone: "数字明暗",
     digitToneHelp: "开启时，0较暗、9较亮。复制内容仍然只是数字。",
     start: "开始素数搜索",
+    stop: "停止",
     retry: "重新搜索",
     grid: "数字网格",
     result: "生成的巨大整数",
@@ -163,6 +171,7 @@ const translations = {
     running: "搜索中",
     found: "已找到",
     notFound: "未找到",
+    cancelled: "已停止",
     error: "错误",
     noImage: "上传图片后会生成100x60数字肖像。",
     pickImageFirst: "请先上传图片。",
@@ -175,6 +184,7 @@ const translations = {
     foundGaussian: (digits: number, tests: number) => `找到${digits.toLocaleString()}位Gaussian Prime候选，MR测试${tests.toLocaleString()}次。`,
     foundPrime: (digits: number, tests: number) => `找到${digits.toLocaleString()}位素数候选，MR测试${tests.toLocaleString()}次。`,
     reachedLimit: "已达到搜索上限。可重新搜索其他候选范围。",
+    cancelledMessage: "已停止素数搜索。",
     workerError: "Worker发生错误。",
     copied: (label: string) => `已复制${label}。`,
     plainPrime: "无换行巨大素数",
@@ -318,6 +328,13 @@ export default function Home() {
         setMessage(t.reachedLimit);
         worker.terminate();
       }
+      if (data.type === "cancelled") {
+        setStatus("cancelled");
+        setAttempts(data.attempts);
+        setProbablePrimeTests(data.probablePrimeTests);
+        setMessage(t.cancelledMessage);
+        worker.terminate();
+      }
       if (data.type === "error") {
         setStatus("error");
         setMessage(data.message);
@@ -339,6 +356,18 @@ export default function Home() {
       gaussian,
       seed: nextSeed,
     });
+  }
+
+  function stopSearch(): void {
+    if (status !== "running") {
+      return;
+    }
+
+    workerRef.current?.postMessage({ type: "cancel" });
+    workerRef.current?.terminate();
+    workerRef.current = null;
+    setStatus("cancelled");
+    setMessage(t.cancelledMessage);
   }
 
   function retrySearch(): void {
@@ -484,7 +513,7 @@ export default function Home() {
             <Metric label={t.digits} value={TOTAL_DIGITS.toLocaleString()} />
           </dl>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+          <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
             <button
               type="button"
               disabled={!canSearch}
@@ -492,6 +521,14 @@ export default function Home() {
               className="rounded-md bg-teal-300 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-teal-200 disabled:cursor-not-allowed disabled:bg-stone-700 disabled:text-stone-400"
             >
               {t.start}
+            </button>
+            <button
+              type="button"
+              disabled={status !== "running"}
+              onClick={stopSearch}
+              className="rounded-md border border-rose-300/40 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-stone-500"
+            >
+              {t.stop}
             </button>
             <button
               type="button"
@@ -626,7 +663,7 @@ function LanguageSwitch({
   );
 }
 
-function DigitGrid({
+const DigitGrid = memo(function DigitGrid({
   value,
   tone,
   heightClass,
@@ -637,7 +674,7 @@ function DigitGrid({
   heightClass: string;
   placeholder: string;
 }) {
-  const rows = value.split("\n");
+  const rows = useMemo(() => value.split("\n"), [value]);
 
   return (
     <div
@@ -662,12 +699,13 @@ function DigitGrid({
       )}
     </div>
   );
-}
+});
 
 function statusLabel(status: SearchStatus, t: (typeof translations)[Locale]): string {
   if (status === "running") return t.running;
   if (status === "found") return t.found;
   if (status === "not_found") return t.notFound;
+  if (status === "cancelled") return t.cancelled;
   if (status === "error") return t.error;
   return t.waiting;
 }
