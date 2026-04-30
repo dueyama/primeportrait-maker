@@ -21,11 +21,9 @@ if [ ! -d "node_modules" ]; then
   echo
 fi
 
-if [ ! -f ".next/BUILD_ID" ]; then
-  echo "Building production app..."
-  npm run build
-  echo
-fi
+echo "Building production app..."
+npm run build
+echo
 
 URL="http://localhost:3000"
 echo "Starting PrimePortrait Maker in production mode at $URL"

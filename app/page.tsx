@@ -9,7 +9,6 @@ import {
   renderDigitGridPng,
   type CropFocus,
   type DigitArtResult,
-  type DigitMappingMode,
 } from "@/lib/imageArt";
 
 type SearchStatus = "idle" | "running" | "found" | "not_found" | "cancelled" | "error";
@@ -84,7 +83,9 @@ const translations = {
     gaussian: "Gaussian Prime",
     gaussianHelp: "ONの場合、通常の素数に加えて n mod 4 = 3 を要求します。",
     digitTone: "数字の濃淡",
-    digitToneHelp: "ONでは0〜9の数値順に色で濃淡を出します。OFFでは単色表示でも崩れにくいよう、数字の字形密度順で再生成します。",
+    digitToneHelp: "ONでは元画像から取った濃淡で色を付けます。候補化で末尾の数字が変わっても色は元画像のままです。OFFは単色表示にするだけで、探索や数字列は変えません。",
+    followDigitTone: "濃淡を数字に追従",
+    followDigitToneHelp: "ONでは候補化で変わった数字に合わせて色も変えます。OFFでは元画像の濃淡を固定します。",
     start: "素数探索を開始",
     stop: "停止",
     retry: "再探索",
@@ -179,7 +180,9 @@ const translations = {
     gaussian: "Gaussian Prime",
     gaussianHelp: "When on, the result must also satisfy n mod 4 = 3.",
     digitTone: "Digit tone",
-    digitToneHelp: "When on, digits use numeric 0-9 mapping plus color tone. When off, the grid is regenerated with a glyph-density digit order for stronger plain-text ASCII art.",
+    digitToneHelp: "When on, color tone comes from the source image and stays fixed even if the candidate suffix digits change. Turning it off only changes display color; it does not affect search or the digit string.",
+    followDigitTone: "Follow candidate digits",
+    followDigitToneHelp: "When on, changed candidate digits also change their color tone. When off, color tone stays locked to the source image.",
     start: "Start prime search",
     stop: "Stop",
     retry: "Search again",
@@ -274,7 +277,9 @@ const translations = {
     gaussian: "Gaussian Prime",
     gaussianHelp: "开启时，除了是素数，还要求 n mod 4 = 3。",
     digitTone: "数字明暗",
-    digitToneHelp: "开启时使用0〜9数值顺序并用颜色表现明暗。关闭时会按数字字形密度重新生成，单色文本更接近ASCII图。",
+    digitToneHelp: "开启时颜色明暗来自原图，即使候选末尾数字改变，颜色也保持原图明暗。关闭只会切换为单色显示，不会影响搜索或数字串。",
+    followDigitTone: "明暗跟随数字",
+    followDigitToneHelp: "开启时，候选数字改变后颜色明暗也会改变。关闭时，颜色明暗固定为原图。",
     start: "开始素数搜索",
     stop: "停止",
     retry: "重新搜索",
@@ -326,6 +331,7 @@ export default function Home() {
   const [autoLocale, setAutoLocale] = useState<Locale>("ja");
   const [gaussian, setGaussian] = useState(false);
   const [digitTone, setDigitTone] = useState(true);
+  const [toneFollowsDigits, setToneFollowsDigits] = useState(false);
   const [status, setStatus] = useState<SearchStatus>("idle");
   const [attempts, setAttempts] = useState(0);
   const [probablePrimeTests, setProbablePrimeTests] = useState(0);
@@ -340,6 +346,8 @@ export default function Home() {
   const t = translations[locale];
   const wrappedPrime = useMemo(() => (prime ? wrapDigits(prime, GRID_WIDTH) : ""), [prime]);
   const gridText = useMemo(() => wrappedPrime || art?.grid.join("\n") || "", [art, wrappedPrime]);
+  const toneGridText = useMemo(() => art?.toneGrid.join("\n") ?? "", [art]);
+  const displayToneGridText = toneFollowsDigits ? "" : toneGridText;
   const canSearch = Boolean(art) && status !== "running";
   const displayMessage = message || t.noImage;
 
@@ -377,10 +385,10 @@ export default function Home() {
       return URL.createObjectURL(file);
     });
 
-    await generateDigitArt(file, { x: 0.5, y: 0.5, zoom: 1 }, digitTone);
+    await generateDigitArt(file, { x: 0.5, y: 0.5, zoom: 1 });
   }
 
-  async function generateDigitArt(file = sourceFile, focus = cropFocus, tone = digitTone): Promise<void> {
+  async function generateDigitArt(file = sourceFile, focus = cropFocus): Promise<void> {
     if (!file) {
       setMessage(t.pickImageFirst);
       return;
@@ -397,21 +405,12 @@ export default function Home() {
     setMessage(t.generating);
 
     try {
-      const result = await imageFileToDigitArt(file, focus, mappingModeForTone(tone));
+      const result = await imageFileToDigitArt(file, focus);
       setArt(result);
       setMessage(t.generated(GRID_WIDTH, GRID_HEIGHT, result.flatDigits.length));
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : t.error);
-    }
-  }
-
-  async function handleDigitToneToggle(): Promise<void> {
-    const nextTone = !digitTone;
-    setDigitTone(nextTone);
-
-    if (sourceFile) {
-      await generateDigitArt(sourceFile, cropFocus, nextTone);
     }
   }
 
@@ -528,7 +527,7 @@ export default function Home() {
       return;
     }
 
-    const png = renderDigitGridPng(wrappedPrime.split("\n"), digitTone);
+    const png = renderDigitGridPng(wrappedPrime.split("\n"), digitTone, toneFollowsDigits ? undefined : art?.toneGrid);
     const link = document.createElement("a");
     link.href = png;
     link.download = digitTone ? "primeportrait-prime-tone.png" : "primeportrait-prime-plain.png";
@@ -639,7 +638,7 @@ export default function Home() {
             </WorkflowBlock>
 
             <WorkflowBlock index={2} title={t.stepDigits} active={Boolean(sourceFile) && !art}>
-              <div className="grid gap-3 sm:grid-cols-[1fr_1fr]">
+              <div className="grid gap-3">
                 <div>
                   <p className="mb-2 text-xs font-medium text-stone-400">{t.fixedResolution}</p>
                   <dl className="grid grid-cols-3 gap-2 text-center">
@@ -648,12 +647,15 @@ export default function Home() {
                     <Metric label={t.digits} value={TOTAL_DIGITS.toLocaleString()} />
                   </dl>
                 </div>
-                <ToggleRow
-                  label={t.digitTone}
-                  help={t.digitToneHelp}
-                  enabled={digitTone}
-                  tone="amber"
-                  onToggle={() => void handleDigitToneToggle()}
+                <ToneControls
+                  toneLabel={t.digitTone}
+                  toneHelp={t.digitToneHelp}
+                  toneEnabled={digitTone}
+                  onToneToggle={() => setDigitTone((value) => !value)}
+                  followLabel={t.followDigitTone}
+                  followHelp={t.followDigitToneHelp}
+                  followEnabled={toneFollowsDigits}
+                  onFollowToggle={() => setToneFollowsDigits((value) => !value)}
                 />
               </div>
             </WorkflowBlock>
@@ -719,8 +721,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="p-4">
-              <DigitGrid value={gridText} tone={digitTone} heightClass="h-[340px] sm:h-[470px] xl:h-[560px]" placeholder={t.gridPlaceholder} />
+            <div className="flex justify-center p-3">
+              <DigitGrid value={gridText} toneValue={displayToneGridText} tone={digitTone} placeholder={t.gridPlaceholder} />
             </div>
 
             <div className="border-t border-white/10 px-4 py-4">
@@ -980,6 +982,63 @@ function ToggleRow({
   );
 }
 
+function ToneControls({
+  toneLabel,
+  toneHelp,
+  toneEnabled,
+  onToneToggle,
+  followLabel,
+  followHelp,
+  followEnabled,
+  onFollowToggle,
+}: {
+  toneLabel: string;
+  toneHelp: string;
+  toneEnabled: boolean;
+  onToneToggle: () => void;
+  followLabel: string;
+  followHelp: string;
+  followEnabled: boolean;
+  onFollowToggle: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-white/10 bg-black/20 px-2 py-2">
+      <span className="hidden shrink-0 px-1 text-xs font-semibold text-stone-400 sm:block">{toneLabel}</span>
+      <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
+        <CompactSwitch label={toneLabel} enabled={toneEnabled} onToggle={onToneToggle} />
+        <CompactSwitch label={followLabel} enabled={followEnabled} onToggle={onFollowToggle} />
+      </div>
+      <HelpButton title={toneLabel} body={`${toneHelp} ${followHelp}`} align="right" />
+    </div>
+  );
+}
+
+function CompactSwitch({
+  label,
+  enabled,
+  onToggle,
+}: {
+  label: string;
+  enabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`flex min-h-7 items-center justify-center gap-2 rounded-md border px-2 text-center text-[11px] font-semibold transition ${
+        enabled
+          ? "border-amber-300/60 bg-amber-300/12 text-amber-100"
+          : "border-white/10 bg-stone-900/70 text-stone-400 hover:border-white/20"
+      }`}
+      aria-pressed={enabled}
+    >
+      <span>{label}</span>
+      <span className={`h-2 w-2 shrink-0 rounded-full ${enabled ? "bg-amber-300" : "bg-stone-600"}`} />
+    </button>
+  );
+}
+
 function RangeControl({
   label,
   value,
@@ -1121,28 +1180,29 @@ function LanguageSwitch({
 
 const DigitGrid = memo(function DigitGrid({
   value,
+  toneValue,
   tone,
-  heightClass,
   placeholder,
 }: {
   value: string;
+  toneValue: string;
   tone: boolean;
-  heightClass: string;
   placeholder: string;
 }) {
   const rows = useMemo(() => value.split("\n"), [value]);
+  const toneRows = useMemo(() => toneValue.split("\n"), [toneValue]);
 
   return (
     <div
-      className={`digit-grid ${heightClass} w-full overflow-auto rounded-md border border-white/10 bg-black/40 p-3 font-mono text-[7px] leading-[1.05]`}
+      className="digit-grid inline-block max-w-full overflow-hidden rounded-md border border-white/10 bg-black/40 p-2 font-mono text-[6px] leading-[1.04] sm:p-3 sm:text-[8px]"
       aria-label={placeholder}
     >
       {value ? (
-        <pre className="m-0 select-text whitespace-pre font-mono">
+        <pre className="m-0 inline-block select-text whitespace-pre font-mono">
           {rows.map((row, rowIndex) => (
             <span key={rowIndex}>
               {Array.from(row).map((digit, digitIndex) => (
-                <span key={`${rowIndex}-${digitIndex}`} style={{ color: tone ? digitColor(digit) : "#fef3c7" }}>
+                <span key={`${rowIndex}-${digitIndex}`} style={{ color: tone ? digitColor(toneRows[rowIndex]?.[digitIndex] ?? digit) : "#fef3c7" }}>
                   {digit}
                 </span>
               ))}
@@ -1180,10 +1240,6 @@ function digitColor(digit: string): string {
     return "#fef3c7";
   }
   return `hsl(42 72% ${18 + value * 7}%)`;
-}
-
-function mappingModeForTone(tone: boolean): DigitMappingMode {
-  return tone ? "value" : "glyph-density";
 }
 
 function resolveLocale(option: LocaleOption, autoLocale: Locale): Locale {

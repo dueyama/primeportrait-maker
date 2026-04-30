@@ -1,5 +1,6 @@
 export type DigitArtResult = {
   grid: string[];
+  toneGrid: string[];
   flatDigits: string;
   previewUrl: string;
   width: number;
@@ -52,10 +53,12 @@ export async function imageFileToDigitArt(
   normalizeLuminance(luminance);
 
   const rows: string[] = [];
+  const toneRows: string[] = [];
   const flat: string[] = [];
 
   for (let y = 0; y < GRID_HEIGHT; y += 1) {
     const rowDigits = new Array<string>(GRID_WIDTH);
+    const rowTones = new Array<string>(GRID_WIDTH);
     const leftToRight = y % 2 === 0;
     for (let step = 0; step < GRID_WIDTH; step += 1) {
       const x = leftToRight ? step : GRID_WIDTH - 1 - step;
@@ -65,6 +68,7 @@ export async function imageFileToDigitArt(
       const quantized = (level / 9) * 255;
       const error = oldValue - quantized;
       rowDigits[x] = digitForLevel(level, mappingMode);
+      rowTones[x] = String(level);
 
       if (leftToRight) {
         distribute(luminance, x + 1, y, error * (7 / 16));
@@ -80,6 +84,7 @@ export async function imageFileToDigitArt(
     }
     const row = rowDigits.join("");
     rows.push(row);
+    toneRows.push(rowTones.join(""));
     flat.push(...rowDigits);
   }
 
@@ -87,6 +92,7 @@ export async function imageFileToDigitArt(
 
   return {
     grid: rows,
+    toneGrid: toneRows,
     flatDigits: flat.join(""),
     previewUrl: canvas.toDataURL("image/png"),
     width: GRID_WIDTH,
@@ -112,7 +118,7 @@ function ensureLeadingDigit(rows: string[], flat: string[], mappingMode: DigitMa
   rows[0] = `${replacement}${(rows[0] ?? "").slice(1)}`;
 }
 
-export function renderDigitGridPng(grid: string[], tone = true): string {
+export function renderDigitGridPng(grid: string[], tone = true, toneGrid?: string[]): string {
   const cell = 12;
   const padding = 28;
   const contentWidth = GRID_WIDTH * cell;
@@ -142,7 +148,8 @@ export function renderDigitGridPng(grid: string[], tone = true): string {
     const row = grid[y] ?? "";
     for (let x = 0; x < row.length; x += 1) {
       const digit = Number(row[x] ?? "0");
-      context.fillStyle = tone ? `hsl(42 64% ${18 + digit * 8}%)` : "#fef3c7";
+      const toneDigit = Number(toneGrid?.[y]?.[x] ?? digit);
+      context.fillStyle = tone ? `hsl(42 64% ${18 + toneDigit * 8}%)` : "#fef3c7";
       context.fillText(row[x] ?? "0", padding + x * cell, padding + y * rowHeight);
     }
   }
