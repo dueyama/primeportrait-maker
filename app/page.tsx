@@ -338,8 +338,8 @@ export default function Home() {
 
   const locale = useMemo(() => resolveLocale(localeOption, autoLocale), [autoLocale, localeOption]);
   const t = translations[locale];
-  const gridText = useMemo(() => art?.grid.join("\n") ?? "", [art]);
   const wrappedPrime = useMemo(() => (prime ? wrapDigits(prime, GRID_WIDTH) : ""), [prime]);
+  const gridText = useMemo(() => wrappedPrime || art?.grid.join("\n") || "", [art, wrappedPrime]);
   const canSearch = Boolean(art) && status !== "running";
   const displayMessage = message || t.noImage;
 
