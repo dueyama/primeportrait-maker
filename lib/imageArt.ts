@@ -114,8 +114,11 @@ function ensureLeadingDigit(rows: string[], flat: string[], mappingMode: DigitMa
 
 export function renderDigitGridPng(grid: string[], tone = true): string {
   const cell = 12;
-  const width = GRID_WIDTH * cell;
-  const height = Math.round(GRID_HEIGHT * cell / TEXT_ASPECT_FIX);
+  const padding = 28;
+  const contentWidth = GRID_WIDTH * cell;
+  const contentHeight = Math.round(GRID_HEIGHT * cell / TEXT_ASPECT_FIX);
+  const width = contentWidth + padding * 2;
+  const height = contentHeight + padding * 2;
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -127,17 +130,20 @@ export function renderDigitGridPng(grid: string[], tone = true): string {
 
   context.fillStyle = "#10131a";
   context.fillRect(0, 0, width, height);
+  context.strokeStyle = "rgba(251, 191, 36, 0.22)";
+  context.lineWidth = 1;
+  context.strokeRect(12.5, 12.5, width - 25, height - 25);
   context.font = "10px SFMono-Regular, Menlo, monospace";
   context.textAlign = "left";
   context.textBaseline = "top";
 
-  const rowHeight = height / GRID_HEIGHT;
+  const rowHeight = contentHeight / GRID_HEIGHT;
   for (let y = 0; y < grid.length; y += 1) {
     const row = grid[y] ?? "";
     for (let x = 0; x < row.length; x += 1) {
       const digit = Number(row[x] ?? "0");
       context.fillStyle = tone ? `hsl(42 64% ${18 + digit * 8}%)` : "#fef3c7";
-      context.fillText(row[x] ?? "0", x * cell, y * rowHeight);
+      context.fillText(row[x] ?? "0", padding + x * cell, padding + y * rowHeight);
     }
   }
 
