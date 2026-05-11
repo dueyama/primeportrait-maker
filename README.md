@@ -7,7 +7,7 @@ Important: results are not formally proven primes. They are Miller-Rabin probabl
 
 ## Features
 
-- Upload JPG/PNG images
+- Upload JPG/PNG/WebP images
 - Square crop workflow with horizontal/vertical focus and zoom controls
 - Convert the crop into an `80x48` digit grid, for a `3,840` digit integer
 - Grayscale conversion, luminance normalization, 0-9 quantization, and Floyd-Steinberg style dithering
@@ -86,6 +86,18 @@ Prime search time depends heavily on the browser, CPU, selected image, and luck.
 For a random `3,840` digit number, prime density is roughly `1 / ln(10^3840)`, so a normal prime often needs a few thousand plausible candidates on average. Gaussian Prime mode accepts about half of those primes, so it can take roughly twice as many candidates.
 
 This is close in spirit to how cryptographic prime generation starts: many systems first use fast probable-prime tests. For cryptographic use, however, implementations use more rounds, stricter standards, and sometimes separate proof or validation steps. PrimePortrait Maker is a math-art app, not a cryptographic prime generator.
+
+## Formal Primality Proofs
+
+PrimePortrait Maker does not prove final primality inside the browser. It produces a strong probable-prime candidate that can be copied as an unwrapped decimal integer and checked with external primality-proving software.
+
+For a formal proof, use an external ECPP/primality-proving tool outside this app. Practical options include:
+
+- [Primo](https://www.ellipsa.eu/pages/primo.html), an ECPP-based primality prover that produces primality certificates.
+- PARI/GP's `ecpp`, `ecppisvalid`, and `ecppexport` functions, where available.
+- Python-assisted workflows that call an external prover or verify an existing certificate. Libraries such as `gmpy2` are useful for arbitrary-precision arithmetic and probable-prime checks, but they are not a drop-in ECPP proof generator for this browser app.
+
+For the default `3,840` digit candidates, proof time can be long and depends heavily on the prover, hardware, and candidate. Keeping ECPP outside the browser preserves this app's local, client-only workflow while still allowing users to certify interesting results separately.
 
 ## Notes
 

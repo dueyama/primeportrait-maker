@@ -670,7 +670,7 @@ export default function Home() {
                   <input
                     className="sr-only"
                     type="file"
-                    accept="image/png,image/jpeg"
+                    accept="image/png,image/jpeg,image/webp"
                     onChange={(event) => void handleFile(event.target.files?.[0] ?? null)}
                   />
                 </label>
