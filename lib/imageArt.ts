@@ -20,12 +20,12 @@ export const GRID_HEIGHT = 48;
 export const TOTAL_DIGITS = GRID_WIDTH * GRID_HEIGHT;
 
 const TEXT_ASPECT_FIX = 0.6;
-const DENSITY_DIGIT_RAMP = ["1", "7", "2", "3", "4", "5", "6", "9", "0", "8"];
+const DENSITY_DIGIT_RAMP = ["8", "9", "6", "0", "5", "3", "2", "4", "7", "1"];
 
 export async function imageFileToDigitArt(
   file: File,
   focus: CropFocus = { x: 0.5, y: 0.5, zoom: 1 },
-  mappingMode: DigitMappingMode = "value",
+  mappingMode: DigitMappingMode = "glyph-density",
 ): Promise<DigitArtResult> {
   const bitmap = await createImageBitmap(file);
   const canvas = document.createElement("canvas");
@@ -134,9 +134,9 @@ export function renderDigitGridPng(grid: string[], tone = true, toneGrid?: strin
     throw new Error("Canvas context is not available in this browser.");
   }
 
-  context.fillStyle = "#10131a";
+  context.fillStyle = tone ? "#10131a" : "#f8fafc";
   context.fillRect(0, 0, width, height);
-  context.strokeStyle = "rgba(251, 191, 36, 0.22)";
+  context.strokeStyle = tone ? "rgba(251, 191, 36, 0.22)" : "rgba(15, 23, 42, 0.16)";
   context.lineWidth = 1;
   context.strokeRect(12.5, 12.5, width - 25, height - 25);
   context.font = "10px SFMono-Regular, Menlo, monospace";
@@ -147,14 +147,33 @@ export function renderDigitGridPng(grid: string[], tone = true, toneGrid?: strin
   for (let y = 0; y < grid.length; y += 1) {
     const row = grid[y] ?? "";
     for (let x = 0; x < row.length; x += 1) {
-      const digit = Number(row[x] ?? "0");
-      const toneDigit = Number(toneGrid?.[y]?.[x] ?? digit);
-      context.fillStyle = tone ? `hsl(42 64% ${18 + toneDigit * 8}%)` : "#fef3c7";
+      const digit = row[x] ?? "0";
+      const toneDigit = toneGrid?.[y]?.[x];
+      context.fillStyle = tone ? digitToneColor(toneDigit ?? digit, Boolean(toneDigit)) : "#0f172a";
       context.fillText(row[x] ?? "0", padding + x * cell, padding + y * rowHeight);
     }
   }
 
   return canvas.toDataURL("image/png");
+}
+
+export function digitToneColor(digit: string | number, isLuminanceLevel = false): string {
+  const value = isLuminanceLevel ? Number(digit) : digitInkLevel(digit);
+  if (!Number.isFinite(value)) {
+    return "#fef3c7";
+  }
+
+  const level = clamp(Math.round(value), 0, 9);
+  return `hsl(42 72% ${18 + level * 7}%)`;
+}
+
+function digitInkLevel(digit: string | number): number {
+  const index = DENSITY_DIGIT_RAMP.indexOf(String(digit));
+  if (index >= 0) {
+    return index;
+  }
+
+  return Number(digit);
 }
 
 function distribute(values: Float64Array, x: number, y: number, error: number): void {

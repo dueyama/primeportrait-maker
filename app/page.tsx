@@ -1,10 +1,11 @@
 "use client";
 
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type WheelEvent as ReactWheelEvent } from "react";
 import {
   GRID_HEIGHT,
   GRID_WIDTH,
   TOTAL_DIGITS,
+  digitToneColor,
   imageFileToDigitArt,
   renderDigitGridPng,
   type CropFocus,
@@ -14,6 +15,7 @@ import {
 type SearchStatus = "idle" | "running" | "found" | "not_found" | "cancelled" | "error";
 type LocaleOption = "auto" | "ja" | "en" | "fr" | "zh";
 type Locale = Exclude<LocaleOption, "auto">;
+type SourceSize = { width: number; height: number };
 
 type WorkerMessage =
   | { type: "progress"; attempts: number; probablePrimeTests: number; progress: number; currentSuffix: string }
@@ -25,6 +27,8 @@ type WorkerMessage =
 const SUFFIX_DIGITS = 16;
 const MAX_ATTEMPTS = 100_000;
 const TOTAL_DIGITS_LABEL = TOTAL_DIGITS.toLocaleString("en-US");
+const APP_VERSION = "Ver. 2.5";
+const GITHUB_URL = "https://github.com/dueyama/primeportrait-maker";
 
 const translations = {
   ja: {
@@ -44,9 +48,12 @@ const translations = {
     howItWorksTitle: "仕組み",
     howItWorksBody: `画像はこのブラウザ内で正方形に切り抜き、${GRID_WIDTH}x${GRID_HEIGHT}個の明度を数字に変換します。先頭は桁数維持のため必ず0以外にし、探索では上位桁を固定して最後の${SUFFIX_DIGITS}桁だけを変えます。結果は証明済み素数ではなく、Miller-Rabinとstrong Lucasを通った確率的素数候補です。まれに本当は素数でない場合があります。`,
     localProcessingTitle: "素数探索の仕組み",
-    localProcessingBody: `上位桁を固定し、最後の${SUFFIX_DIGITS}桁だけを変えて素数候補を探します。処理はこの端末のブラウザ内で実行します。`,
+    localProcessingBody: `上位桁を固定し、最後の${SUFFIX_DIGITS}桁だけを変えて素数候補を探します。候補はMiller-Rabinを通った後、Selfridge型strong Lucas probable prime testを1回追加で通します。処理はこの端末のブラウザ内で実行します。`,
+    primeTestPipeline: "判定: 小素数ふるい -> Miller-Rabin bases 2,3,5,7 -> strong Lucas後段チェック。LucasはMRを通った候補だけに実行します。",
     moreDetails: "詳しくは",
     close: "閉じる",
+    versionHistoryTitle: "バージョン遍歴",
+    versionHistoryIntro: "メジャー番号はワークフローや素数候補の意味が変わった節目、マイナー番号は同じ流れの中での機能・表示・出力の改善を表します。",
     primeDetailTitle: "素数探索の詳しい仕組み",
     primeDetailIntro: "画像から作った数字列を改行なしの巨大整数として扱い、画像として重要な上位桁は固定したまま、末尾だけを差し替えて素数になる候補を探します。",
     primeDetailSteps: [
@@ -142,9 +149,12 @@ const translations = {
     howItWorksTitle: "How it works",
     howItWorksBody: `The image is cropped to a square in this browser, then ${GRID_WIDTH}x${GRID_HEIGHT} luminance samples are mapped to digits. The first digit is forced to be non-zero to preserve the digit count. Search keeps the upper digits fixed and varies only the final ${SUFFIX_DIGITS} digits. The result is not a proven prime; it is a probable-prime candidate that passed Miller-Rabin and strong Lucas tests, and may still be composite.`,
     localProcessingTitle: "How prime search works",
-    localProcessingBody: `The upper digits stay fixed and only the final ${SUFFIX_DIGITS} digits are varied. The search runs locally in this browser.`,
+    localProcessingBody: `The upper digits stay fixed and only the final ${SUFFIX_DIGITS} digits are varied. Candidates that pass Miller-Rabin also run one Selfridge-style strong Lucas probable-prime post-check. The search runs locally in this browser.`,
+    primeTestPipeline: "Test pipeline: small-prime sieve -> Miller-Rabin bases 2,3,5,7 -> strong Lucas post-check. Lucas only runs for candidates that pass MR.",
     moreDetails: "Details",
     close: "Close",
+    versionHistoryTitle: "Version History",
+    versionHistoryIntro: "Major versions mark changes to the workflow or the meaning of prime candidates. Minor versions mark feature, display, and output refinements within the same line.",
     primeDetailTitle: "Prime Search Details",
     primeDetailIntro: "The digit portrait is joined into one unwrapped integer. To preserve the visible portrait, the important upper digits stay fixed while only the suffix is replaced until a prime candidate is found.",
     primeDetailSteps: [
@@ -240,9 +250,12 @@ const translations = {
     howItWorksTitle: "Fonctionnement",
     howItWorksBody: `L'image est recadrée en carré dans ce navigateur, puis ${GRID_WIDTH}x${GRID_HEIGHT} échantillons de luminance sont convertis en chiffres. Le premier chiffre est forcé à être non nul pour conserver le nombre de chiffres. La recherche garde les chiffres de tête fixes et ne varie que les ${SUFFIX_DIGITS} derniers chiffres. Le résultat n'est pas un nombre premier prouvé : c'est un candidat probablement premier ayant passé Miller-Rabin et strong Lucas, et il peut encore être composé.`,
     localProcessingTitle: "Fonctionnement de la recherche",
-    localProcessingBody: `Les chiffres de tête restent fixes et seuls les ${SUFFIX_DIGITS} derniers chiffres varient. La recherche s'exécute localement dans ce navigateur.`,
+    localProcessingBody: `Les chiffres de tête restent fixes et seuls les ${SUFFIX_DIGITS} derniers chiffres varient. Les candidats qui passent Miller-Rabin passent aussi un post-controle strong Lucas probable prime de type Selfridge. La recherche s'exécute localement dans ce navigateur.`,
+    primeTestPipeline: "Pipeline de test : crible de petits premiers -> Miller-Rabin bases 2,3,5,7 -> post-controle strong Lucas. Lucas ne s'applique qu'aux candidats qui passent MR.",
     moreDetails: "Détails",
     close: "Fermer",
+    versionHistoryTitle: "Historique des versions",
+    versionHistoryIntro: "Les versions majeures marquent les changements de flux de travail ou de signification des candidats premiers. Les versions mineures regroupent les améliorations de fonctions, d'affichage et de sortie dans la même ligne.",
     primeDetailTitle: "Détails de la recherche de premier",
     primeDetailIntro: "Le portrait de chiffres est concaténé en un très grand entier sans retour à la ligne. Pour préserver le portrait visible, les chiffres importants de tête restent fixes, et seul le suffixe est remplacé jusqu'à trouver un candidat premier.",
     primeDetailSteps: [
@@ -338,9 +351,12 @@ const translations = {
     howItWorksTitle: "工作原理",
     howItWorksBody: `图片会在此浏览器内裁剪为正方形，然后把${GRID_WIDTH}x${GRID_HEIGHT}个亮度采样映射为数字。首位会强制为非0以保持位数。搜索会固定高位数字，只改变最后${SUFFIX_DIGITS}位。结果不是已证明的素数，而是通过Miller-Rabin和strong Lucas测试的概率素数候选，仍有可能不是素数。`,
     localProcessingTitle: "素数搜索原理",
-    localProcessingBody: `高位数字固定，只改变最后${SUFFIX_DIGITS}位来寻找素数候选。搜索在本机浏览器内运行。`,
+    localProcessingBody: `高位数字固定，只改变最后${SUFFIX_DIGITS}位来寻找素数候选。通过Miller-Rabin的候选还会再执行一次Selfridge型strong Lucas概率素数后段检查。搜索在本机浏览器内运行。`,
+    primeTestPipeline: "判定流程：小素数筛 -> Miller-Rabin基数2,3,5,7 -> strong Lucas后段检查。Lucas只对通过MR的候选执行。",
     moreDetails: "详细说明",
     close: "关闭",
+    versionHistoryTitle: "版本历程",
+    versionHistoryIntro: "主版本表示工作流或素数候选含义发生变化的节点；次版本表示同一产品线内的功能、显示和输出改进。",
     primeDetailTitle: "素数搜索的详细原理",
     primeDetailIntro: "数字肖像会被连成一个无换行的巨大整数。为了保持可见的肖像，高位数字固定，只替换末尾数字，直到找到素数候选。",
     primeDetailSteps: [
@@ -421,11 +437,211 @@ const translations = {
   },
 } as const;
 
+const versionHistory: Array<{
+  version: string;
+  date: string;
+  hash?: string;
+  major?: boolean;
+  summary: Record<Locale, string>;
+}> = [
+  {
+    version: "Ver. 2.5",
+    date: "2026-05-12",
+    summary: {
+      ja: "素数探索パネルに、Miller-Rabin後のstrong Lucas後段チェックを常時表示。",
+      en: "Surfaced the strong Lucas post-check after Miller-Rabin in the prime-search panel.",
+      fr: "Affichage du post-controle strong Lucas apres Miller-Rabin dans le panneau de recherche.",
+      zh: "在素数搜索面板中明确显示Miller-Rabin之后的strong Lucas后段检查。",
+    },
+  },
+  {
+    version: "Ver. 2.4",
+    date: "2026-05-12",
+    summary: {
+      ja: "切り抜きプレビューをマウス/タッチで直接操作可能に。PCではドラッグとホイール、スマホではドラッグとピンチで位置と拡大率を調整できます。",
+      en: "Made the crop preview directly interactive: drag and wheel on desktop, drag and pinch on mobile.",
+      fr: "Le recadrage devient interactif : glisser et molette sur ordinateur, glisser et pincement sur mobile.",
+      zh: "裁剪预览可直接交互：桌面端支持拖拽和滚轮，移动端支持拖拽和双指缩放。",
+    },
+  },
+  {
+    version: "Ver. 2.3",
+    date: "2026-05-12",
+    summary: {
+      ja: "数字だけの再現性を上げるため、字形の実インク量に合わせて数字割り当てと濃淡追従を調整。濃淡OFFは白地に黒数字へ変更。",
+      en: "Adjusted plain digit art and tone-follow coloring to match practical digit ink density; tone-off display now uses black digits on white.",
+      fr: "Ajustement de l'art en chiffres et du suivi de tonalité selon la densité réelle d'encre des chiffres ; l'affichage sans tonalité utilise maintenant des chiffres noirs sur fond blanc.",
+      zh: "按数字字形的实际墨量调整纯数字肖像和明暗跟随；关闭明暗时改为白底黑字。",
+    },
+  },
+  {
+    version: "Ver. 2.2",
+    date: "2026-05-11",
+    hash: "fbbdb79",
+    summary: {
+      ja: "WebPアップロード対応と、外部ツールによる形式的な素数証明についての説明を追加。",
+      en: "Added WebP upload support and notes about external formal primality proofs.",
+      fr: "Ajout de la prise en charge WebP et de notes sur les preuves formelles externes de primalité.",
+      zh: "加入WebP上传支持，并补充外部形式化素数证明的说明。",
+    },
+  },
+  {
+    version: "Ver. 2.1",
+    date: "2026-05-01",
+    hash: "1153df1",
+    summary: {
+      ja: "フランス語ローカライズを追加。",
+      en: "Added French localization.",
+      fr: "Ajout de la localisation française.",
+      zh: "加入法语本地化。",
+    },
+  },
+  {
+    version: "Ver. 2.0",
+    date: "2026-05-01",
+    hash: "aa0cf7b",
+    major: true,
+    summary: {
+      ja: "Miller-Rabin通過後にstrong Lucas probable prime testを追加し、素数候補の判定品質を変更。",
+      en: "Added a strong Lucas probable-prime post-check after Miller-Rabin, changing the quality bar for prime candidates.",
+      fr: "Ajout d'un post-controle strong Lucas apres Miller-Rabin, ce qui change le niveau d'exigence des candidats premiers.",
+      zh: "在Miller-Rabin之后加入strong Lucas概率素数后段检查，改变了素数候选的判定门槛。",
+    },
+  },
+  {
+    version: "Ver. 1.6",
+    date: "2026-04-30",
+    hash: "afc4833",
+    summary: {
+      ja: "数字の濃淡表示と追従コントロールを調整。",
+      en: "Refined digit tone display controls.",
+      fr: "Affinage des controles d'affichage de tonalite des chiffres.",
+      zh: "调整数字明暗显示控制。",
+    },
+  },
+  {
+    version: "Ver. 1.5",
+    date: "2026-04-30",
+    hash: "ff4b62d",
+    summary: {
+      ja: "保存PNGの周囲に余白を追加。",
+      en: "Added padding around exported PNG images.",
+      fr: "Ajout de marges autour des PNG exportes.",
+      zh: "为导出的PNG图像增加边距。",
+    },
+  },
+  {
+    version: "Ver. 1.4",
+    date: "2026-04-30",
+    hash: "a0d4271",
+    summary: {
+      ja: "探索で見つかった候補を数字グリッドとして表示。",
+      en: "Showed the found candidate as a digit grid after search.",
+      fr: "Affichage du candidat trouve sous forme de grille de chiffres apres la recherche.",
+      zh: "搜索后把找到的候选显示为数字网格。",
+    },
+  },
+  {
+    version: "Ver. 1.3",
+    date: "2026-04-30",
+    hash: "69c2edb",
+    summary: {
+      ja: "結果が証明済み素数ではなく確率的素数候補であることを明確化。",
+      en: "Clarified that results are probable-prime candidates, not formal proofs.",
+      fr: "Clarification : les resultats sont des candidats probablement premiers, pas des preuves formelles.",
+      zh: "明确结果是概率素数候选，而不是形式化证明。",
+    },
+  },
+  {
+    version: "Ver. 1.2",
+    date: "2026-04-30",
+    hash: "2da3b7c",
+    summary: {
+      ja: "数字アートへの変換マッピングを改善。",
+      en: "Improved digit art mapping.",
+      fr: "Amelioration du mappage vers l'art en chiffres.",
+      zh: "改进数字肖像映射。",
+    },
+  },
+  {
+    version: "Ver. 1.0",
+    date: "2026-04-30",
+    hash: "359c307",
+    major: true,
+    summary: {
+      ja: "PrimePortraitの操作フローと画面構成を大きく再設計。",
+      en: "Redesigned the PrimePortrait workflow UI.",
+      fr: "Refonte importante du flux et de l'interface PrimePortrait.",
+      zh: "大幅重新设计PrimePortrait的工作流界面。",
+    },
+  },
+  {
+    version: "Ver. 0.4",
+    date: "2026-04-30",
+    hash: "a3b2bb6",
+    summary: {
+      ja: "肖像の数字グリッドサイズを縮小。",
+      en: "Reduced the portrait digit grid size.",
+      fr: "Reduction de la taille de la grille de chiffres.",
+      zh: "缩小数字肖像网格尺寸。",
+    },
+  },
+  {
+    version: "Ver. 0.3",
+    date: "2026-04-30",
+    hash: "f2109a4",
+    summary: {
+      ja: "ブラウザ内の素数探索を安定化。",
+      en: "Stabilized browser-based prime search.",
+      fr: "Stabilisation de la recherche de premier dans le navigateur.",
+      zh: "稳定浏览器内素数搜索。",
+    },
+  },
+  {
+    version: "Ver. 0.2",
+    date: "2026-04-30",
+    hash: "a3c2c7c",
+    summary: {
+      ja: "レイアウトとローカライズを調整。",
+      en: "Polished layout and localization.",
+      fr: "Polissage de la mise en page et de la localisation.",
+      zh: "优化布局和本地化。",
+    },
+  },
+  {
+    version: "Ver. 0.1",
+    date: "2026-04-30",
+    hash: "fc393b5",
+    summary: {
+      ja: "数字ポートレート生成のワークフローを改良。",
+      en: "Refined the digit portrait workflow.",
+      fr: "Affinage du flux de portrait en chiffres.",
+      zh: "改进数字肖像生成流程。",
+    },
+  },
+  {
+    version: "Ver. 0.0",
+    date: "2026-04-30",
+    hash: "c3773d6",
+    major: true,
+    summary: {
+      ja: "PrimePortrait MakerのMVPを作成。",
+      en: "Built the PrimePortrait Maker MVP.",
+      fr: "Creation du MVP de PrimePortrait Maker.",
+      zh: "创建PrimePortrait Maker的MVP。",
+    },
+  },
+];
+
 export default function Home() {
   const workerRef = useRef<Worker | null>(null);
+  const cropFocusRef = useRef<CropFocus>({ x: 0.5, y: 0.5, zoom: 1 });
+  const cropPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const cropGestureRef = useRef<{ focus: CropFocus; center: { x: number; y: number }; distance: number } | null>(null);
   const [art, setArt] = useState<DigitArtResult | null>(null);
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceSize, setSourceSize] = useState<SourceSize | null>(null);
   const [fileName, setFileName] = useState("");
   const [cropFocus, setCropFocus] = useState<CropFocus>({ x: 0.5, y: 0.5, zoom: 1 });
   const [localeOption, setLocaleOption] = useState<LocaleOption>("auto");
@@ -442,6 +658,7 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 9_000_000));
   const [showPrimeDetails, setShowPrimeDetails] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   const locale = useMemo(() => resolveLocale(localeOption, autoLocale), [autoLocale, localeOption]);
   const t = translations[locale];
@@ -450,11 +667,17 @@ export default function Home() {
   const toneGridText = useMemo(() => art?.toneGrid.join("\n") ?? "", [art]);
   const displayToneGridText = toneFollowsDigits ? "" : toneGridText;
   const canSearch = Boolean(art) && status !== "running";
+  const canAdjustCrop = Boolean(sourceUrl) && status !== "running";
+  const cropMovement = useMemo(() => cropMovementFor(sourceSize, cropFocus.zoom), [cropFocus.zoom, sourceSize]);
   const displayMessage = message || t.noImage;
 
   useEffect(() => {
     setAutoLocale(detectBrowserLocale());
   }, []);
+
+  useEffect(() => {
+    cropFocusRef.current = cropFocus;
+  }, [cropFocus]);
 
   useEffect(() => {
     return () => {
@@ -477,6 +700,8 @@ export default function Home() {
     setAttempts(0);
     setProbablePrimeTests(0);
     setFileName(file.name);
+    setSourceSize(null);
+    cropFocusRef.current = { x: 0.5, y: 0.5, zoom: 1 };
     setCropFocus({ x: 0.5, y: 0.5, zoom: 1 });
     setSourceFile(file);
     setSourceUrl((current) => {
@@ -513,6 +738,61 @@ export default function Home() {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : t.error);
     }
+  }
+
+  function handleCropPointerDown(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (!canAdjustCrop) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    cropPointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    cropGestureRef.current = makeCropGesture(cropPointersRef.current, cropFocusRef.current);
+  }
+
+  function handleCropPointerMove(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (!canAdjustCrop || !cropPointersRef.current.has(event.pointerId)) {
+      return;
+    }
+
+    cropPointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const gesture = cropGestureRef.current;
+    if (!gesture) {
+      return;
+    }
+
+    const next = normalizeCropFocus(
+      nextCropFocusFromGesture(gesture, cropPointersRef.current, event.currentTarget.getBoundingClientRect()),
+      sourceSize,
+    );
+    cropFocusRef.current = next;
+    setCropFocus(next);
+  }
+
+  function handleCropPointerEnd(event: ReactPointerEvent<HTMLDivElement>): void {
+    cropPointersRef.current.delete(event.pointerId);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    cropGestureRef.current = makeCropGesture(cropPointersRef.current, cropFocusRef.current);
+  }
+
+  function handleCropWheel(event: ReactWheelEvent<HTMLDivElement>): void {
+    if (!canAdjustCrop) {
+      return;
+    }
+
+    event.preventDefault();
+    const nextZoom = clampNumber(cropFocusRef.current.zoom * Math.exp(-event.deltaY * 0.001), 1, 3);
+    const next = normalizeCropFocus({ ...cropFocusRef.current, zoom: nextZoom }, sourceSize);
+    cropFocusRef.current = next;
+    setCropFocus(next);
+  }
+
+  function setNormalizedCropFocus(next: CropFocus): void {
+    const normalized = normalizeCropFocus(next, sourceSize);
+    cropFocusRef.current = normalized;
+    setCropFocus(normalized);
   }
 
   function startSearch(nextSeed = seed): void {
@@ -645,6 +925,21 @@ export default function Home() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <p className="font-mono text-base font-semibold tracking-wide text-stone-50 sm:text-lg">{t.appTitle}</p>
+                <button
+                  type="button"
+                  onClick={() => setShowVersionHistory(true)}
+                  className="rounded border border-teal-300/30 px-1.5 py-0.5 font-mono text-[10px] text-teal-200 transition hover:border-teal-300 hover:bg-teal-300/10"
+                >
+                  {APP_VERSION}
+                </button>
+                <a
+                  href={GITHUB_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded border border-white/15 px-1.5 py-0.5 font-mono text-[10px] text-stone-300 transition hover:border-teal-300/70 hover:text-teal-100"
+                >
+                  GitHub
+                </a>
                 <HelpButton title={t.howItWorksTitle} body={t.howItWorksBody} />
               </div>
               <h1 className="truncate text-sm leading-5 text-stone-400">{t.title}</h1>
@@ -681,13 +976,33 @@ export default function Home() {
               </div>
 
               <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
-                <div className="aspect-square overflow-hidden rounded-md border border-teal-300/25 bg-black/30">
+                <div
+                  className={`aspect-square overflow-hidden rounded-md border border-teal-300/25 bg-black/30 ${
+                    canAdjustCrop ? "cursor-grab touch-none active:cursor-grabbing" : ""
+                  }`}
+                  onPointerDown={handleCropPointerDown}
+                  onPointerMove={handleCropPointerMove}
+                  onPointerUp={handleCropPointerEnd}
+                  onPointerCancel={handleCropPointerEnd}
+                  onWheel={handleCropWheel}
+                >
                   {sourceUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      className="h-full w-full object-cover transition-transform duration-150"
+                      className="h-full w-full select-none object-cover transition-transform duration-150"
                       src={sourceUrl}
                       alt="Crop preview"
+                      draggable={false}
+                      onLoad={(event) => {
+                        const nextSize = {
+                          width: event.currentTarget.naturalWidth,
+                          height: event.currentTarget.naturalHeight,
+                        };
+                        setSourceSize(nextSize);
+                        const normalized = normalizeCropFocus(cropFocusRef.current, nextSize);
+                        cropFocusRef.current = normalized;
+                        setCropFocus(normalized);
+                      }}
                       style={{
                         objectPosition: `${cropFocus.x * 100}% ${cropFocus.y * 100}%`,
                         transform: `scale(${cropFocus.zoom})`,
@@ -709,22 +1024,22 @@ export default function Home() {
                   <RangeControl
                     label={t.horizontal}
                     value={Math.round(cropFocus.x * 100)}
-                    disabled={!sourceUrl || status === "running"}
-                    onChange={(value) => setCropFocus((focus) => ({ ...focus, x: value / 100 }))}
+                    disabled={!canAdjustCrop || !cropMovement.x}
+                    onChange={(value) => setNormalizedCropFocus({ ...cropFocusRef.current, x: value / 100 })}
                   />
                   <RangeControl
                     label={t.vertical}
                     value={Math.round(cropFocus.y * 100)}
-                    disabled={!sourceUrl || status === "running"}
-                    onChange={(value) => setCropFocus((focus) => ({ ...focus, y: value / 100 }))}
+                    disabled={!canAdjustCrop || !cropMovement.y}
+                    onChange={(value) => setNormalizedCropFocus({ ...cropFocusRef.current, y: value / 100 })}
                   />
                   <RangeControl
                     label={t.zoom}
                     value={Math.round(cropFocus.zoom * 100)}
                     min={100}
                     max={300}
-                    disabled={!sourceUrl || status === "running"}
-                    onChange={(value) => setCropFocus((focus) => ({ ...focus, zoom: value / 100 }))}
+                    disabled={!canAdjustCrop}
+                    onChange={(value) => setNormalizedCropFocus({ ...cropFocusRef.current, zoom: value / 100 })}
                   />
                   <button
                     type="button"
@@ -780,6 +1095,7 @@ export default function Home() {
                   tone="teal"
                   onToggle={() => setGaussian((value) => !value)}
                 />
+                <p className="rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs leading-5 text-stone-400">{t.primeTestPipeline}</p>
                 <div className="grid gap-2 sm:grid-cols-3">
                   <button
                     type="button"
@@ -887,6 +1203,15 @@ export default function Home() {
           onClose={() => setShowPrimeDetails(false)}
         />
       ) : null}
+      {showVersionHistory ? (
+        <VersionHistoryModal
+          title={t.versionHistoryTitle}
+          intro={t.versionHistoryIntro}
+          closeLabel={t.close}
+          locale={locale}
+          onClose={() => setShowVersionHistory(false)}
+        />
+      ) : null}
     </main>
   );
 }
@@ -898,6 +1223,97 @@ function Metric({ label, value }: { label: string; value: string }) {
       <dd className="mt-1 text-sm font-semibold text-stone-100">{value}</dd>
     </div>
   );
+}
+
+function makeCropGesture(pointers: Map<number, { x: number; y: number }>, focus: CropFocus): { focus: CropFocus; center: { x: number; y: number }; distance: number } | null {
+  const points = Array.from(pointers.values());
+  if (points.length === 0) {
+    return null;
+  }
+
+  return {
+    focus,
+    center: centerOfPoints(points),
+    distance: distanceBetweenFirstTwo(points),
+  };
+}
+
+function nextCropFocusFromGesture(
+  gesture: { focus: CropFocus; center: { x: number; y: number }; distance: number },
+  pointers: Map<number, { x: number; y: number }>,
+  rect: DOMRect,
+): CropFocus {
+  const points = Array.from(pointers.values());
+  const center = centerOfPoints(points);
+  const distance = distanceBetweenFirstTwo(points);
+  const zoom = gesture.distance > 0 && distance > 0 ? clampNumber(gesture.focus.zoom * (distance / gesture.distance), 1, 3) : gesture.focus.zoom;
+  const deltaX = rect.width > 0 ? (center.x - gesture.center.x) / rect.width : 0;
+  const deltaY = rect.height > 0 ? (center.y - gesture.center.y) / rect.height : 0;
+
+  return {
+    x: clampNumber(gesture.focus.x - deltaX / zoom, 0, 1),
+    y: clampNumber(gesture.focus.y - deltaY / zoom, 0, 1),
+    zoom,
+  };
+}
+
+function normalizeCropFocus(focus: CropFocus, sourceSize: SourceSize | null): CropFocus {
+  const zoom = clampNumber(focus.zoom, 1, 3);
+  const movement = cropMovementFor(sourceSize, zoom);
+
+  return {
+    x: movement.x ? clampNumber(focus.x, 0, 1) : 0.5,
+    y: movement.y ? clampNumber(focus.y, 0, 1) : 0.5,
+    zoom,
+  };
+}
+
+function cropMovementFor(sourceSize: SourceSize | null, zoom: number): { x: boolean; y: boolean } {
+  if (!sourceSize || sourceSize.width <= 0 || sourceSize.height <= 0) {
+    return { x: true, y: true };
+  }
+
+  const sourceAspect = sourceSize.width / sourceSize.height;
+  const baseWidth = sourceAspect > 1 ? sourceSize.height : sourceSize.width;
+  const baseHeight = sourceAspect > 1 ? sourceSize.height : sourceSize.width;
+  const cropWidth = baseWidth / clampNumber(zoom, 1, 3);
+  const cropHeight = baseHeight / clampNumber(zoom, 1, 3);
+  const epsilon = 0.5;
+
+  return {
+    x: sourceSize.width - cropWidth > epsilon,
+    y: sourceSize.height - cropHeight > epsilon,
+  };
+}
+
+function centerOfPoints(points: Array<{ x: number; y: number }>): { x: number; y: number } {
+  const total = points.reduce(
+    (sum, point) => ({
+      x: sum.x + point.x,
+      y: sum.y + point.y,
+    }),
+    { x: 0, y: 0 },
+  );
+  const count = Math.max(1, points.length);
+
+  return {
+    x: total.x / count,
+    y: total.y / count,
+  };
+}
+
+function distanceBetweenFirstTwo(points: Array<{ x: number; y: number }>): number {
+  if (points.length < 2) {
+    return 0;
+  }
+
+  const first = points[0];
+  const second = points[1];
+  return Math.hypot((second?.x ?? 0) - (first?.x ?? 0), (second?.y ?? 0) - (first?.y ?? 0));
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 function HelpButton({
@@ -987,6 +1403,55 @@ function PrimeDetailsModal({
           <p className="rounded-md border border-amber-300/20 bg-amber-300/5 px-3 py-3 text-xs leading-5 text-amber-100">{estimate}</p>
           <p className="rounded-md border border-teal-300/20 bg-teal-300/5 px-3 py-3 text-xs leading-5 text-teal-100">{localNote}</p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function VersionHistoryModal({
+  title,
+  intro,
+  closeLabel,
+  locale,
+  onClose,
+}: {
+  title: string;
+  intro: string;
+  closeLabel: string;
+  locale: Locale;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/70 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="version-history-title">
+      <div className="max-h-[85vh] w-full max-w-2xl overflow-auto rounded-lg border border-teal-300/25 bg-zinc-950 p-5 shadow-2xl shadow-black/60">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-teal-300">{APP_VERSION}</p>
+            <h2 id="version-history-title" className="mt-1 text-lg font-semibold text-stone-50">
+              {title}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-9 rounded-md border border-white/10 px-3 text-xs font-semibold text-stone-200 transition hover:border-teal-300/70"
+          >
+            {closeLabel}
+          </button>
+        </div>
+        <p className="mt-4 text-sm leading-6 text-stone-300">{intro}</p>
+        <ol className="mt-4 grid gap-2">
+          {versionHistory.map((entry) => (
+            <li key={entry.version} className={`rounded-md border px-3 py-2 ${entry.major ? "border-teal-300/30 bg-teal-300/10" : "border-white/10 bg-black/20"}`}>
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="font-mono text-xs font-semibold text-teal-200">{entry.version}</span>
+                <span className="font-mono text-[10px] text-stone-500">{entry.date}</span>
+                {entry.hash ? <span className="font-mono text-[10px] text-stone-600">{entry.hash}</span> : null}
+              </div>
+              <p className="mt-1 text-sm leading-5 text-stone-300">{entry.summary[locale]}</p>
+            </li>
+          ))}
+        </ol>
       </div>
     </div>
   );
@@ -1296,7 +1761,9 @@ const DigitGrid = memo(function DigitGrid({
 
   return (
     <div
-      className="digit-grid inline-block max-w-full overflow-hidden rounded-md border border-white/10 bg-black/40 p-2 font-mono text-[6px] leading-[1.04] sm:p-3 sm:text-[8px]"
+      className={`digit-grid inline-block max-w-full overflow-hidden rounded-md border p-2 font-mono text-[6px] leading-[1.04] sm:p-3 sm:text-[8px] ${
+        tone ? "border-white/10 bg-black/40" : "border-zinc-300 bg-stone-50"
+      }`}
       aria-label={placeholder}
     >
       {value ? (
@@ -1304,7 +1771,14 @@ const DigitGrid = memo(function DigitGrid({
           {rows.map((row, rowIndex) => (
             <span key={rowIndex}>
               {Array.from(row).map((digit, digitIndex) => (
-                <span key={`${rowIndex}-${digitIndex}`} style={{ color: tone ? digitColor(toneRows[rowIndex]?.[digitIndex] ?? digit) : "#fef3c7" }}>
+                <span
+                  key={`${rowIndex}-${digitIndex}`}
+                  style={{
+                    color: tone
+                      ? digitToneColor(toneRows[rowIndex]?.[digitIndex] ?? digit, Boolean(toneRows[rowIndex]?.[digitIndex]))
+                      : "#0f172a",
+                  }}
+                >
                   {digit}
                 </span>
               ))}
@@ -1334,14 +1808,6 @@ function wrapDigits(value: string, width: number): string {
     rows.push(value.slice(index, index + width));
   }
   return rows.join("\n");
-}
-
-function digitColor(digit: string): string {
-  const value = Number(digit);
-  if (!Number.isFinite(value)) {
-    return "#fef3c7";
-  }
-  return `hsl(42 72% ${18 + value * 7}%)`;
 }
 
 function resolveLocale(option: LocaleOption, autoLocale: Locale): Locale {
