@@ -119,6 +119,8 @@ PrimePortrait Maker belongs to the same math-art family as earlier prime-portrai
 - Will Dean, ["Picturesque Primes"](https://willdean.rocks/primes). This later project presents digit-grid images inspired by Abel's work and discusses Miller-Rabin testing and possible ECPP certification.
 - Herbie Bradley, [`prime_search.py`](https://gist.github.com/herbiebradley/d31e87ebf1e4c325a2658ed1df21f171). This implementation note explores making rectangular number art prime by searching local digit changes.
 
+For a broader bibliography covering image quantization, probable-prime tests, Gaussian primes, and primality proving, see [References and Related Work](docs/references.md).
+
 ## Formal Primality Proofs
 
 PrimePortrait Maker does not prove final primality inside the browser. It produces a strong probable-prime candidate that can be copied as an unwrapped decimal integer and checked with external primality-proving software.
