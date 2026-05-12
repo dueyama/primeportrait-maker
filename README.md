@@ -110,6 +110,15 @@ For a random `3,840` digit number, prime density is roughly `1 / ln(10^3840)`, s
 
 This is close in spirit to how cryptographic prime generation starts: many systems first use fast probable-prime tests. For cryptographic use, however, implementations use more rounds, stricter standards, and sometimes separate proof or validation steps. PrimePortrait Maker is a math-art app, not a cryptographic prime generator.
 
+## Related Work
+
+PrimePortrait Maker belongs to the same math-art family as earlier prime-portrait projects, but its search strategy is intentionally different: it keeps the visible portrait stable and varies only the final suffix digits.
+
+- Zachary Abel, ["Prime Portraits"](https://archive.bridgesmathart.org/2016/bridges2016-359.html), Bridges 2016. This paper introduces the prime-portrait idea and constructs large primes whose digit grids depict recognizable subjects.
+- Roland Meertens, ["Painting by Prime Number"](https://www.pinchofintelligence.com/painting-by-prime-number/). This recreation turns source images into 10-color digit images, perturbs them with small noise, and searches for probable-prime portraits.
+- Will Dean, ["Picturesque Primes"](https://willdean.rocks/primes). This later project presents digit-grid images inspired by Abel's work and discusses Miller-Rabin testing and possible ECPP certification.
+- Herbie Bradley, [`prime_search.py`](https://gist.github.com/herbiebradley/d31e87ebf1e4c325a2658ed1df21f171). This implementation note explores making rectangular number art prime by searching local digit changes.
+
 ## Formal Primality Proofs
 
 PrimePortrait Maker does not prove final primality inside the browser. It produces a strong probable-prime candidate that can be copied as an unwrapped decimal integer and checked with external primality-proving software.
