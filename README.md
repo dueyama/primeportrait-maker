@@ -19,7 +19,7 @@ Important: results are not formally proven primes. They are Miller-Rabin plus st
 - Search progress, stop/retry controls, Miller-Rabin test count, and strong Lucas post-checking
 - Copy the final probable-prime candidate as one line or wrapped to the portrait width
 - Save the candidate digit portrait as a PNG
-- Japanese, English, Chinese, and automatic language selection
+- Japanese, English, French, Chinese, and automatic language selection
 
 ## Tech Stack
 
@@ -63,9 +63,9 @@ npm run build
 
 Version numbers are assigned from the repository history, with the first pushed commit treated as `Ver. 0.0`. Major versions mark product-level changes in workflow or prime-candidate semantics. Minor versions mark feature, UI, and output refinements inside the same product line. `Ver. 2.5` is the current working version in this tree.
 
-- Ver. 2.5 (2026-05-12): Surface the Miller-Rabin -> strong Lucas test pipeline in the app.
-- Ver. 2.4 (2026-05-12): Add direct crop preview controls: drag and wheel on desktop, drag and pinch on mobile.
-- Ver. 2.3 (2026-05-12): Align plain digit art and tone-follow coloring with practical digit ink density; show white-background black digits when tone is off.
+- Ver. 2.5 (2026-05-12, `8ebd0fd`): Surface the Miller-Rabin -> strong Lucas test pipeline in the app.
+- Ver. 2.4 (2026-05-12, `8ebd0fd`): Add direct crop preview controls: drag and wheel on desktop, drag and pinch on mobile.
+- Ver. 2.3 (2026-05-12, `8ebd0fd`): Align plain digit art and tone-follow coloring with practical digit ink density; show white-background black digits when tone is off.
 - Ver. 2.2 (2026-05-11, `fbbdb79`): Add WebP upload support and notes about external formal primality proofs.
 - Ver. 2.1 (2026-05-01, `1153df1`): Add French localization.
 - Ver. 2.0 (2026-05-01, `aa0cf7b`): Add a strong Lucas probable-prime post-check after Miller-Rabin.
