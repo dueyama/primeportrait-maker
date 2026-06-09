@@ -30,6 +30,7 @@ const TOTAL_DIGITS_LABEL = TOTAL_DIGITS.toLocaleString("en-US");
 const APP_VERSION = "Ver. 2.5";
 const GITHUB_URL = "https://github.com/dueyama/primeportrait-maker";
 const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`;
+const APP_ICON_URL = "/icon.png";
 
 const translations = {
   ja: {
@@ -922,7 +923,11 @@ export default function Home() {
       <div className="mx-auto flex max-w-[1540px] flex-col gap-3">
         <header className="relative z-40 flex flex-col gap-3 rounded-lg border border-white/10 bg-zinc-950/70 px-3 py-3 shadow-2xl shadow-black/25 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded border border-teal-300/50 bg-teal-300/10 font-mono text-lg text-teal-200">P</div>
+            <img
+              src={APP_ICON_URL}
+              alt=""
+              className="h-9 w-9 shrink-0 rounded-md border border-teal-300/40 bg-black/40 object-cover shadow-lg shadow-teal-950/40"
+            />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <p className="font-mono text-base font-semibold tracking-wide text-stone-50 sm:text-lg">{t.appTitle}</p>
