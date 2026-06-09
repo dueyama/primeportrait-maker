@@ -29,6 +29,7 @@ const MAX_ATTEMPTS = 100_000;
 const TOTAL_DIGITS_LABEL = TOTAL_DIGITS.toLocaleString("en-US");
 const APP_VERSION = "Ver. 2.5";
 const GITHUB_URL = "https://github.com/dueyama/primeportrait-maker";
+const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`;
 
 const translations = {
   ja: {
@@ -1191,6 +1192,17 @@ export default function Home() {
           message={displayMessage}
           t={t}
         />
+        <footer className="flex flex-col gap-1 px-1 pb-1 text-center font-mono text-[10px] text-stone-600 sm:flex-row sm:items-center sm:justify-between sm:text-left">
+          <span>Copyright (c) 2026 dueyama</span>
+          <a
+            href={LICENSE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="transition hover:text-teal-300"
+          >
+            MIT License
+          </a>
+        </footer>
       </div>
       {showPrimeDetails ? (
         <PrimeDetailsModal
