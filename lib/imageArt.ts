@@ -139,11 +139,13 @@ export function renderDigitGridPng(grid: string[], tone = true, toneGrid?: strin
   context.strokeStyle = tone ? "rgba(251, 191, 36, 0.22)" : "rgba(15, 23, 42, 0.16)";
   context.lineWidth = 1;
   context.strokeRect(12.5, 12.5, width - 25, height - 25);
-  context.font = "10px SFMono-Regular, Menlo, monospace";
+  const rowHeight = contentHeight / GRID_HEIGHT;
+  const screenLineHeightRatio = 1.04;
+  const fontSize = rowHeight / screenLineHeightRatio;
+  context.font = `${fontSize}px "SF Mono", Monaco, "Cascadia Mono", "Roboto Mono", monospace`;
   context.textAlign = "left";
   context.textBaseline = "top";
 
-  const rowHeight = contentHeight / GRID_HEIGHT;
   for (let y = 0; y < grid.length; y += 1) {
     const row = grid[y] ?? "";
     for (let x = 0; x < row.length; x += 1) {
