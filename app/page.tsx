@@ -27,7 +27,7 @@ type WorkerMessage =
 const SUFFIX_DIGITS = 16;
 const MAX_ATTEMPTS = 100_000;
 const TOTAL_DIGITS_LABEL = TOTAL_DIGITS.toLocaleString("en-US");
-const APP_VERSION = "Ver. 2.5";
+const APP_VERSION = "Ver. 2.6";
 const GITHUB_URL = "https://github.com/dueyama/primeportrait-maker";
 const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`;
 const APP_ICON_URL = "/icon.png";
@@ -446,6 +446,17 @@ const versionHistory: Array<{
   major?: boolean;
   summary: Record<Locale, string>;
 }> = [
+  {
+    version: "Ver. 2.6",
+    date: "2026-07-18",
+    hash: "41b3e36",
+    summary: {
+      ja: "保存PNGの数字を画面表示に近い密度へ拡大。アプリアイコン・favicon、著作権フッター、Vercel Web Analyticsも追加。",
+      en: "Increased exported PNG digit density to match the on-screen grid, and added the app icon/favicon, copyright footer, and Vercel Web Analytics.",
+      fr: "Densite des chiffres PNG rapprochee de l'affichage, avec ajout de l'icone/favicon, du copyright en pied de page et de Vercel Web Analytics.",
+      zh: "提高导出PNG的数字密度以贴近画面显示，并加入应用图标/favicon、页脚版权信息和Vercel Web Analytics。",
+    },
+  },
   {
     version: "Ver. 2.5",
     date: "2026-05-12",

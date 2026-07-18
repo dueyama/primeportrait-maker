@@ -61,8 +61,9 @@ npm run build
 
 ## Version History
 
-Version numbers are assigned from the repository history, with the first pushed commit treated as `Ver. 0.0`. Major versions mark product-level changes in workflow or prime-candidate semantics. Minor versions mark feature, UI, and output refinements inside the same product line. `Ver. 2.5` is the current working version in this tree.
+Version numbers are assigned from the repository history, with the first pushed commit treated as `Ver. 0.0`. Major versions mark product-level changes in workflow or prime-candidate semantics. Minor versions mark feature, UI, and output refinements inside the same product line. `Ver. 2.6` is the current working version in this tree.
 
+- Ver. 2.6 (2026-07-18, `41b3e36`): Improve exported PNG digit readability; add the app icon/favicon, copyright footer, and Vercel Web Analytics.
 - Ver. 2.5 (2026-05-12, `8ebd0fd`): Surface the Miller-Rabin -> strong Lucas test pipeline in the app.
 - Ver. 2.4 (2026-05-12, `8ebd0fd`): Add direct crop preview controls: drag and wheel on desktop, drag and pinch on mobile.
 - Ver. 2.3 (2026-05-12, `8ebd0fd`): Align plain digit art and tone-follow coloring with practical digit ink density; show white-background black digits when tone is off.
